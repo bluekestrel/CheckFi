@@ -21,7 +21,7 @@ contract CheckMinter is ERC721URIStorage {
     mapping(uint256 => Check) private _checks;
 
     modifier onlyBank {
-        require(msg.sender == bank, "Address is not bank address");
+        require(msg.sender == bank, "Address is not the bank address");
         _;
     }
 
