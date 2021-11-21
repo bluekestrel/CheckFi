@@ -1,0 +1,16 @@
+.navigation {
+  &__main {
+    height: 50px;
+    background-color: white;
+  }
+
+  &__link {
+    color: black;
+
+    &:hover {
+      bottom: 0px;
+      border-bottom: 2px solid black;
+      color: black;
+    }
+  }
+}

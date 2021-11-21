@@ -1,0 +1,277 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap');
+
+$rcs-check-ratio: 2.6 !default;
+$rcs-size: 650px !default;
+$rcs-font: 'Consolas', 'Courier', monospace !default;
+
+$rcs-name-font-size: 17px !default;
+$rcs-name-font-family: $rcs-font !default;
+$rcs-number-font-size: 20px !default;
+$rcs-number-font-family: $rcs-font !default;
+$rcs-signature-font-family: 'Dancing Script', cursive !default;
+$rcs-signature-font-size: 20px !default;
+
+$rcs-valid-font-size: 10px !default;
+$rcs-expiry-font-size: 16px !default;
+$rcs-expiry-font-family: $rcs-font !default;
+$rcs-cvc-font-size: 14px !default;
+$rcs-cvc-font-family: $rcs-font !default;
+$rcs-cvc-color: #222 !default;
+
+$rcs-shadow: 0 0 20px rgba(#000, 0.2) !default;
+$rcs-light-text-color: #fff !default;
+$rcs-dark-text-color: #555 !default;
+$rcs-stripe-bg-color: #2a1d16 !default;
+// $rcs-signature-background: repeating-linear-gradient(0.1deg, #fff 20%, #fff 40%, #fea 40%, #fea 44%, #fff 44%) !default;
+
+$rcs-default-background: linear-gradient(25deg, #939393, #717171) !default;
+$rcs-unknown-background: linear-gradient(25deg, #999, #999) !default;
+$rcs-background-transition: all 0.5s ease-out !default;
+
+$rcs-animate-background: true;
+
+$rcs-green-background: linear-gradient(25deg, #308c67, #a3f2cf) !default;
+$rcs-grey-background: linear-gradient(25deg, #ccc, #999) !default;
+$rcs-white-background: linear-gradient(25deg, #fff, #eee) !default;
+$rcs-blue-background: linear-gradient(25deg, #0f509e, #1399cd) !default;
+$rcs-black-background: linear-gradient(25deg, #211c18, #aaa7a2) !default;
+$rcs-red-background: linear-gradient(25deg, #8b181b, #de1f27) !default;
+$rcs-purple-background: linear-gradient(25deg, #52307c, #7c5295) !default;
+
+.rcs {
+  margin: 0 auto;
+  perspective: 1000px;
+  width: $rcs-size;
+
+  &__check {
+    height: $rcs-size / $rcs-check-ratio;
+    margin: 0 auto;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: all 0.4s linear;
+    width: $rcs-size;
+
+    &--front,
+    &--back {
+      backface-visibility: hidden;
+      background: $rcs-purple-background; // this can be changed for different 'check' backgrounds
+      color: $rcs-light-text-color;
+      height: 100%;
+      left: 0;
+      overflow: hidden;
+      position: absolute;
+      top: 0;
+      transform-style: preserve-3d;
+      width: 100%;
+
+      @if $rcs-shadow != '' {
+        box-shadow: $rcs-shadow;
+      }
+    }
+
+    &--front {
+      z-index: 20;
+    }
+
+    &__background {
+      height: 200%;
+      left: -170%;
+      position: absolute;
+      top: -60%;
+      transform: rotate(25deg);
+      transition: $rcs-background-transition;
+      width: 150%;
+    }
+
+    &:not(&--unknown) {
+      .rcs__check__background {
+        left: -22%;
+      }
+    }
+  }
+
+  &__number {
+    clear: both;
+    font-family: $rcs-number-font-family;
+    font-size: $rcs-number-font-size;
+    left: 5%;
+    position: absolute;
+    top: 45%;
+
+    &.rcs__number--large {
+      font-size: $rcs-number-font-size * 0.85;
+    }
+  }
+
+  &__date {
+    font-family: $rcs-cvc-font-family;
+    font-size: $rcs-cvc-font-size;
+    top: 15%;
+    right: 5%;
+    line-height: 1;
+    text-align: left;
+    position: absolute;
+    border-bottom: 1px solid white;
+    padding-bottom: 3px;
+    width: 20%;
+
+    > * {
+      vertical-align: middle;
+    }
+  }
+
+  &__recipient {
+    font-family: $rcs-name-font-family;
+    font-size: $rcs-name-font-size;
+    left: 5%;
+    top: 35%;
+    line-height: 1;
+    overflow: hidden;
+    position: absolute;
+    text-align: left;
+    text-overflow: ellipsis;
+    width: 75%;
+    border-bottom: 1px solid white;
+    padding-bottom: 3px;
+  }
+
+  &__written_amount {
+    font-family: $rcs-name-font-family;
+    font-size: $rcs-name-font-size;
+    left: 5%;
+    top: 45%;
+    line-height: 1;
+    overflow: hidden;
+    position: absolute;
+    text-align: left;
+    text-overflow: ellipsis;
+    width: 80%;
+    border-bottom: 1px solid white;
+    padding-bottom: 3px;
+  }
+
+  &__number_amount {
+    font-family: $rcs-name-font-family;
+    font-size: $rcs-name-font-size;
+    color: black;
+    background: $rcs-white-background;
+    width: 13%;
+    height: 7%;
+    right: 5%;
+    top: 37%;
+    overflow: hidden;
+    position: absolute;
+    text-align: bottom;
+    text-overflow: ellipsis;
+  }
+
+  &__memo {
+    bottom: 15%;
+    font-family: $rcs-name-font-family;
+    font-size: $rcs-name-font-size;
+    left: 5%;
+    line-height: 1;
+    overflow: hidden;
+    position: absolute;
+    text-align: left;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    width: 35%;
+    border-bottom: 1px solid white;
+    padding-bottom: 3px;
+  }
+
+  &__signature {
+    bottom: 15%;
+    font-family: $rcs-signature-font-family;
+    font-size: $rcs-signature-font-size;
+    right: 5%;
+    line-height: 1;
+    overflow: hidden;
+    position: absolute;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    width: 35%;
+    border-bottom: 1px solid white;
+    padding-bottom: 3px;
+  }
+
+  &__expiry {
+    bottom: 15%;
+    font-size: 0;
+    line-height: 1;
+    position: absolute;
+    right: 10%;
+
+    > * {
+      vertical-align: middle;
+    }
+
+    &__valid {
+      font-size: $rcs-valid-font-size;
+      margin-bottom: 5px;
+    }
+
+    &__value {
+      font-family: $rcs-expiry-font-family;
+      font-size: $rcs-expiry-font-size;
+    }
+  }
+
+  &__number,
+  &__memo,
+  &__expiry,
+  &__cvc {
+    opacity: 0.5;
+    transition: opacity 0.3s;
+  }
+
+  &__issuer {
+    background-position: top right;
+    background-repeat: no-repeat;
+    background-size: contain;
+    height: 23%;
+    position: absolute;
+    right: 10%;
+    top: 10%;
+    width: 40%;
+  }
+
+  &__stripe {
+    background-color: $rcs-stripe-bg-color;
+    height: 22%;
+    left: 0;
+    position: absolute;
+    top: 9%;
+    width: 100%;
+  }
+
+  &__cvc {
+    color: $rcs-cvc-color;
+    font-family: $rcs-cvc-font-family;
+    font-size: $rcs-cvc-font-size;
+    left: 67%;
+    line-height: 1;
+    position: absolute;
+    top: 42%;
+  }
+
+  &__cvc__front {
+    font-family: $rcs-cvc-font-family;
+    font-size: $rcs-cvc-font-size * 0.85;
+    opacity: 0;
+    position: absolute;
+    right: 10%;
+    top: 38%;
+    visibility: hidden;
+  }
+
+  &--filled {
+    opacity: 0.8 !important;
+  }
+
+  &--focused {
+    font-weight: 700;
+    opacity: 1 !important;
+  }
+}
