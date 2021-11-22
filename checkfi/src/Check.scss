@@ -42,6 +42,7 @@ $rcs-purple-background: linear-gradient(25deg, #52307c, #7c5295) !default;
   margin: 0 auto;
   perspective: 1000px;
   width: $rcs-size;
+  padding: 5px 0px 20px 10px;
 
   &__check {
     height: $rcs-size / $rcs-check-ratio;
@@ -90,19 +91,6 @@ $rcs-purple-background: linear-gradient(25deg, #52307c, #7c5295) !default;
     }
   }
 
-  &__number {
-    clear: both;
-    font-family: $rcs-number-font-family;
-    font-size: $rcs-number-font-size;
-    left: 5%;
-    position: absolute;
-    top: 45%;
-
-    &.rcs__number--large {
-      font-size: $rcs-number-font-size * 0.85;
-    }
-  }
-
   &__date {
     font-family: $rcs-cvc-font-family;
     font-size: $rcs-cvc-font-size;
@@ -131,21 +119,7 @@ $rcs-purple-background: linear-gradient(25deg, #52307c, #7c5295) !default;
     text-align: left;
     text-overflow: ellipsis;
     width: 75%;
-    border-bottom: 1px solid white;
-    padding-bottom: 3px;
-  }
-
-  &__written_amount {
-    font-family: $rcs-name-font-family;
-    font-size: $rcs-name-font-size;
-    left: 5%;
-    top: 45%;
-    line-height: 1;
-    overflow: hidden;
-    position: absolute;
-    text-align: left;
-    text-overflow: ellipsis;
-    width: 80%;
+    height: 21px;
     border-bottom: 1px solid white;
     padding-bottom: 3px;
   }
@@ -165,18 +139,34 @@ $rcs-purple-background: linear-gradient(25deg, #52307c, #7c5295) !default;
     text-overflow: ellipsis;
   }
 
-  &__memo {
-    bottom: 15%;
+  &__written_amount {
     font-family: $rcs-name-font-family;
     font-size: $rcs-name-font-size;
     left: 5%;
+    bottom: 45%;
     line-height: 1;
     overflow: hidden;
     position: absolute;
     text-align: left;
     text-overflow: ellipsis;
-    text-transform: uppercase;
+    height: 21px;
+    width: 80%;
+    border-bottom: 1px solid white;
+    padding-bottom: 3px;
+  }
+
+  &__memo {
+    font-family: $rcs-name-font-family;
+    font-size: $rcs-name-font-size;
+    left: 5%;
+    bottom: 15%;
+    line-height: 1;
+    overflow: hidden;
+    position: absolute;
+    text-align: left;
+    text-overflow: ellipsis;
     width: 35%;
+    height: 21px;
     border-bottom: 1px solid white;
     padding-bottom: 3px;
   }
@@ -190,84 +180,10 @@ $rcs-purple-background: linear-gradient(25deg, #52307c, #7c5295) !default;
     overflow: hidden;
     position: absolute;
     text-overflow: ellipsis;
-    text-transform: uppercase;
     width: 35%;
+    height: 21px;
     border-bottom: 1px solid white;
     padding-bottom: 3px;
-  }
-
-  &__expiry {
-    bottom: 15%;
-    font-size: 0;
-    line-height: 1;
-    position: absolute;
-    right: 10%;
-
-    > * {
-      vertical-align: middle;
-    }
-
-    &__valid {
-      font-size: $rcs-valid-font-size;
-      margin-bottom: 5px;
-    }
-
-    &__value {
-      font-family: $rcs-expiry-font-family;
-      font-size: $rcs-expiry-font-size;
-    }
-  }
-
-  &__number,
-  &__memo,
-  &__expiry,
-  &__cvc {
-    opacity: 0.5;
-    transition: opacity 0.3s;
-  }
-
-  &__issuer {
-    background-position: top right;
-    background-repeat: no-repeat;
-    background-size: contain;
-    height: 23%;
-    position: absolute;
-    right: 10%;
-    top: 10%;
-    width: 40%;
-  }
-
-  &__stripe {
-    background-color: $rcs-stripe-bg-color;
-    height: 22%;
-    left: 0;
-    position: absolute;
-    top: 9%;
-    width: 100%;
-  }
-
-  &__cvc {
-    color: $rcs-cvc-color;
-    font-family: $rcs-cvc-font-family;
-    font-size: $rcs-cvc-font-size;
-    left: 67%;
-    line-height: 1;
-    position: absolute;
-    top: 42%;
-  }
-
-  &__cvc__front {
-    font-family: $rcs-cvc-font-family;
-    font-size: $rcs-cvc-font-size * 0.85;
-    opacity: 0;
-    position: absolute;
-    right: 10%;
-    top: 38%;
-    visibility: hidden;
-  }
-
-  &--filled {
-    opacity: 0.8 !important;
   }
 
   &--focused {

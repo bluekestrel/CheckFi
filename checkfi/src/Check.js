@@ -1,77 +1,44 @@
+import React, { useState, useEffect } from 'react';
+
 import './Check.scss';
-import React from 'react';
-import PropTypes from 'prop-types';
+/*
+const [values, setValues] = useState[{
+    focused: false,
+    memo: '',
+    recipient: '',
+    writtenAmount: '',
+    numberAmount: '',
+    checkDate: '',
+    signature: '',
+  }];
+*/
 
-class ReactChecks extends React.Component {
-  static propTypes = {
-    focused: PropTypes.string,
-    memo: PropTypes.string.isRequired,
-    recipient: PropTypes.string.isRequired,
-    writtenAmount: PropTypes.string.isRequired,
-    numberAmount: PropTypes.string.isRequired,
-    checkDate: PropTypes.oneOfType([
-      PropTypes.string,
-      PropTypes.number,
-    ]),
-    signature: PropTypes.string.isRequired,
-  };
+function ReactChecks(props) {
+  const [values, setValues] = useState(props);
 
-  get checkDate() {
-    const { checkDate = '' } = this.props;
-    const date = typeof checkDate === 'number' ? checkDate.toString() : checkDate;
-    let month = '';
-    let day = '';
-    let year = '';
+  useEffect(() => {
+    setValues(prevValues => ({ ...prevValues, checkDate: props.checkDate }));
+  }, [props.checkDate]);
 
-    if (date.includes('/')) {
-      [month, day, year] = date.split('/');
-    }
-    else if (date.length) {
-      month = date.substr(0, 2);
-      day = date.substr(2, 4);
-      year = date.substr(4, 8);
-    }
+  useEffect(() => {
+    setValues(prevValues => ({ ...prevValues, recipient: props.recipient }));
+  }, [props.recipient]);
 
-    while (month.length < 2) {
-      month += 'M';
-    }
+  useEffect(() => {
+    setValues(prevValues => ({ ...prevValues, numberAmount: props.numberAmount }));
+  }, [props.numberAmount]);
 
-    while (day.length < 2) {
-      day += 'D'
-    }
+  useEffect(() => {
+    setValues(prevValues => ({ ...prevValues, writtenAmount: props.writtenAmount }));
+  }, [props.writtenAmount]);
 
-    while (year.length < 4) {
-      year += 'Y';
-    }
+  useEffect(() => {
+    setValues(prevValues => ({ ...prevValues, memo: props.memo }));
+  }, [props.memo]);
 
-    return `${month}/${day}/${year}`;
-  }
-
-  get recipient() {
-    const { recipient } = this.props;
-    return recipient ? recipient : 'RECIPIENT';
-  }
-
-  get writtenAmount() {
-    const { writtenAmount } = this.props;
-    return writtenAmount ? writtenAmount : 'WRITTEN AMOUNT'
-  }
-
-  get numberAmount() {
-    const { numberAmount } = this.props;
-    console.log(numberAmount);
-    return numberAmount ? `$ ${numberAmount}` : '$ AMOUNT'
-  }
-
-  get memo() {
-    const { memo } = this.props;
-    return memo ? memo : 'MEMO';
-  }
-
-  get signature() {
-    const { signature } = this.props;
-    return signature ? signature : '';
-  }
+  useEffect(() => {
+    setValues(prevValues => ({ ...prevValues, signature: props.signature }));
+  }, [props.signature]);
 
   /* May need this number html for check amount later
     <div
@@ -99,79 +66,66 @@ class ReactChecks extends React.Component {
   </div>
    */
 
-  render() {
-    const { focused } = this.props;
-    const { checkDate, recipient, writtenAmount, numberAmount, memo, signature } = this;
-
-    return (
-      <div key="Checks" className="rcs">
-        <div
-          className={[
-            'rcs__check',
-            `rcs__check--${this.issuer}`,
-          ].join(' ').trim()}
-        >
-          <div className="rcs__check--front">
-            <div className="rcs__check__background" />
-            <div className="rcs__issuer" />
-            <div
-              className={[
-                'rcs__date',
-                focused === 'checkDate' ? 'rcs--focused' : '',
-                checkDate.substr(0, 1) !== 'M' ? 'rcs--filled' : '',
-              ].join(' ').trim()}
-            >
-              {checkDate}
-            </div>
-            <div
-              className={[
-                'rcs__recipient',
-                focused === 'recipient' ? 'rcs--focused' : '',
-              ].join(' ').trim()}
-            >
-              {recipient}
-            </div>
-            <div
-              className={[
-                'rcs__written_amount',
-                focused === 'writtenAmount' ? 'rcs--focused' : '',
-              ].join(' ').trim()}
-            >
-              {writtenAmount}
-            </div>
-            <div
-              className={[
-                'rcs__number_amount',
-                focused === 'numberAmount' ? 'rcs--focused' : '',
-              ].join(' ').trim()}
-            >
-              {numberAmount}
-            </div>
-            <div
-              className={[
-                'rcs__memo',
-                focused === 'memo' ? 'rcs--focused' : '',
-                memo ? 'rcs--filled' : '',
-              ].join(' ').trim()}
-            >
-              {memo}
-            </div>
-            <div
-              className={[
-                'rcs__signature',
-                focused === 'signature' ? 'rcs--focused' : '',
-              ].join(' ').trim()}
-            >
-              {signature}
-            </div>
+  return (
+    <div key="Checks" className="rcs">
+      <div
+        className={[
+          'rcs__check',
+        ].join(' ').trim()}
+      >
+        <div className="rcs__check--front">
+          <div className="rcs__check__background" />
+          <div className="rcs__issuer" />
+          <div
+            className={[
+              'rcs__date',
+              values.checkDate.substr(0, 1) !== 'M' ? 'rcs--filled' : '',
+            ].join(' ').trim()}
+          >
+            {values.checkDate}
           </div>
-          <div className="rcs__check--back">
-            <div className="rcs__check__background" />
+          <div
+            className={[
+              'rcs__recipient',
+            ].join(' ').trim()}
+          >
+            {values.recipient}
+          </div>
+          <div
+            className={[
+              'rcs__written_amount',
+            ].join(' ').trim()}
+          >
+            {values.writtenAmount}
+          </div>
+          <div
+            className={[
+              'rcs__number_amount',
+            ].join(' ').trim()}
+          >
+            $ {values.numberAmount}
+          </div>
+          <div
+            className={[
+              'rcs__memo',
+            ].join(' ').trim()}
+          >
+            {values.memo}
+          </div>
+          <div
+            className={[
+              'rcs__signature',
+            ].join(' ').trim()}
+          >
+            {values.signature}
           </div>
         </div>
+        <div className="rcs__check--back">
+          <div className="rcs__check__background" />
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
 }
 
 export default ReactChecks;
