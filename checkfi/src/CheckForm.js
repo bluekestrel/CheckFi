@@ -21,7 +21,7 @@ function reducer(prevState, { key, value }) {
   }
 }
 
-function CheckForm() {
+function CheckForm({ update }) {
   const [values, setValues] = useReducer(reducer, initialState);
 
   const onChange = (e) => {
@@ -31,6 +31,7 @@ function CheckForm() {
   async function sendData() {
     console.log(values);
     // TODO: send ajax request with values from check
+    update({ show: true, status: "success", msg: "Success!"});
   }
 
   return (
