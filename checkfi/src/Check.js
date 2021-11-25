@@ -103,7 +103,7 @@ function ReactChecks(props) {
               'rcs__number_amount',
             ].join(' ').trim()}
           >
-            $ {values.numberAmount}
+            ${values.numberAmount}
           </div>
           <div
             className={[

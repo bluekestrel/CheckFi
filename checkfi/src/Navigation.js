@@ -1,5 +1,5 @@
 import { Nav } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 import './Navigation.scss';
 
@@ -7,16 +7,14 @@ function Navigation() {
   return (
     <div className="navigation__main">
       <Nav
-        activeKey="/"
         className={["container"]}
-        onSelect={(selectedKey) => alert(`selected ${selectedKey}`)}
       >
         <Nav.Item>
           <Nav.Link
             className="navigation__link"
-            as={Link}
+            as={NavLink}
             to="/"
-            eventKey="home"
+            eventKey="Home"
           >
             CheckFi
           </Nav.Link>
@@ -24,9 +22,9 @@ function Navigation() {
         <Nav.Item>
           <Nav.Link
             className="navigation__link"
-            as={Link}
+            as={NavLink}
             to="/write_check"
-            eventKey="link-1"
+            eventKey="WriteCheck"
           >
               Write Check
           </Nav.Link>
@@ -34,9 +32,9 @@ function Navigation() {
         <Nav.Item>
           <Nav.Link
             className="navigation__link"
-            as={Link}
+            as={NavLink}
             to="/redeem_check"
-            eventKey="about"
+            eventKey="RedeemCheck"
           >
             Redeem Check
           </Nav.Link>
@@ -44,9 +42,9 @@ function Navigation() {
         <Nav.Item>
           <Nav.Link
             className="navigation__link"
-            as={Link}
+            as={NavLink}
             to="/view"
-            eventKey="about"
+            eventKey="View"
           >
             View Checks
           </Nav.Link>
