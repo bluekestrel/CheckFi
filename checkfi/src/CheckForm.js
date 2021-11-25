@@ -1,5 +1,5 @@
 import React, { useReducer } from 'react';
-import { Col, FloatingLabel, Form, Row } from 'react-bootstrap';
+import { Button, Col, FloatingLabel, Form, Row } from 'react-bootstrap';
 
 import ReactChecks from './Check';
 
@@ -28,19 +28,26 @@ function CheckForm() {
     setValues({key: e.target.name, value: e.target.value});
   };
 
+  async function sendData() {
+    console.log(values);
+    // TODO: send ajax request with values from check
+  }
+
   return (
-    <div>
-      <ReactChecks
-        memo={ values.memo }
-        numberAmount={ values.numberAmount }
-        writtenAmount={ values.writtenAmount }
-        recipient={ values.recipient }
-        checkDate={ values.checkDate }
-        signature={ values.signature }
-      />
-      <Form>
+    <div className='checkform__main'>
+      <div className='checkform__image'>
+        <ReactChecks
+          memo={ values.memo }
+          numberAmount={ values.numberAmount }
+          writtenAmount={ values.writtenAmount }
+          recipient={ values.recipient }
+          checkDate={ values.checkDate }
+          signature={ values.signature }
+        />
+      </div>
+      <Form as={Col} className='checkform__form'>
         <Row className="mb-2">
-          <Form.Group as={Col} controlId="gridRecipient">
+          <Form.Group as={Col} controlId="gridRecipient" className="checkform__field">
             <FloatingLabel controlId="recipient" label="Recipient">
               <Form.Control
                 placeholder="Recipient"
@@ -51,7 +58,7 @@ function CheckForm() {
             </FloatingLabel>
           </Form.Group>
 
-          <Form.Group as={Col} controlId="gridNumberAmount">
+          <Form.Group as={Col} controlId="gridNumberAmount" className="checkform__field">
             <FloatingLabel controlId="numberAmount" label="$ Numerical Amount">
               <Form.Control
                 placeholder="$ Numerical Amount"
@@ -63,18 +70,20 @@ function CheckForm() {
           </Form.Group>
         </Row>
 
-        <FloatingLabel controlId="writtenAmount" label="Written Amount">
-          <Form.Control
-            placeholder="Written Amount"
-            name="writtenAmount"
-            value={ values.writtenAmount }
-            onChange={ onChange }
-          />
-        </FloatingLabel>
+        <Row className="mb-1">
+          <FloatingLabel controlId="writtenAmount" label="Written Amount" className="checkform__field">
+            <Form.Control
+              placeholder="Written Amount"
+              name="writtenAmount"
+              value={ values.writtenAmount }
+              onChange={ onChange }
+            />
+          </FloatingLabel>
+        </Row>
 
         <Row className="mb-2">
-          <Form.Group as={Col} controlId="gridMemo">
-            <FloatingLabel controlId="memo" label="Memo">
+          <Form.Group as={Col} controlId="gridMemo" className="checkform__field">
+            <FloatingLabel controlId="memo" label="Memo" className="checkform__control">
               <Form.Control
                 placeholder="Memo"
                 name="memo"
@@ -84,7 +93,7 @@ function CheckForm() {
             </FloatingLabel>
           </Form.Group>
 
-          <Form.Group as={Col} controlId="gridSignature">
+          <Form.Group as={Col} controlId="gridSignature" className="checkform__field">
             <FloatingLabel controlId="signature" label="Signature">
               <Form.Control
                 placeholder="Signature"
@@ -95,6 +104,13 @@ function CheckForm() {
             </FloatingLabel>
           </Form.Group>
         </Row>
+
+        <div className='checkform__button'>
+          <Button variant="outline-secondary" onClick={() => sendData()}>
+            Send Check
+          </Button>
+        </div>
+
       </Form>
     </div>
   );
