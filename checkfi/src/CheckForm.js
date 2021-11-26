@@ -15,6 +15,9 @@ const initialState = {
 }
 
 function reducer(prevState, { key, value }) {
+  if (key === "clear") {
+    return initialState;
+  }
   return {
     ...prevState,
     [key]: value,
@@ -32,6 +35,7 @@ function CheckForm({ update }) {
     console.log(values);
     // TODO: send ajax request with values from check
     update({ show: true, status: "success", msg: "Success!"});
+    setValues({key: "clear", value: "clear"});
   }
 
   return (
