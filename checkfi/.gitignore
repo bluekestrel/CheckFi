@@ -2,6 +2,9 @@
 
 !.gitignore
 
+# assets
+/public/money-check-alt-duotone.svg
+
 # dependencies
 /node_modules
 /.pnp

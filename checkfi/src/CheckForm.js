@@ -1,4 +1,4 @@
-import React, { useReducer } from 'react';
+import React, { useReducer, useRef, useState } from 'react';
 import { Button, Col, FloatingLabel, Form, Row } from 'react-bootstrap';
 
 import ReactChecks from './Check';
@@ -26,17 +26,63 @@ function reducer(prevState, { key, value }) {
 
 function CheckForm({ update }) {
   const [values, setValues] = useReducer(reducer, initialState);
+  const [validated, setValidated] = useState(false);
+  const [errors, setErrors] = useState({});
+  const formRef = useRef(null);
 
-  const onChange = (e) => {
+  function handleReset() {
+    formRef.current.reset();
+    setValidated(false);
+  };
+
+  function onChange(e) {
     setValues({key: e.target.name, value: e.target.value});
   };
 
-  async function sendData() {
-    console.log(values);
-    // TODO: send ajax request with values from check
-    update({ show: true, status: "success", msg: "Success!"});
-    setValues({key: "clear", value: "clear"});
+  function checkForErrors() {
+    const { numberAmount } = values;
+    const errors = {};
+    if (numberAmount === '') {
+      errors.numberAmount = "Numerical amount cannot be empty";
+      return errors;
+    }
+
+    // check to make sure numerical amount is actually a number
+    const isNum = /^\d+(\.\d{1,2})?$/.test(numberAmount);
+    if (!isNum) {
+      errors.numberAmount = "Numerical amount must be an integer";
+    }
+
+    return errors;
   }
+
+  function handleSubmit(event) {
+    const form = event.currentTarget;
+
+    // prevent the page from reloading regardless of whether form is valid or invalid
+    event.preventDefault();
+    event.stopPropagation();
+    const validationErrors = checkForErrors();
+
+    if (form.checkValidity() === false || Object.keys(validationErrors).length !== 0) {
+      // form is invalid
+      setErrors(validationErrors);
+      // indicate to form that validity has been checked, Note: this doesn't indicate whether
+      // a form is valid or not, just that it has been checked
+      setValidated(true);
+    }
+    else {
+      // form is valid, can sendData to server
+      // clear out form errors, if any
+      handleReset();
+      setErrors({});
+
+      console.log(values);
+      // TODO: send ajax request with values from check
+      update({ show: true, status: "success", msg: "Success!"});
+      setValues({key: "clear", value: "clear"});
+    }
+  };
 
   return (
     <div className='checkform__main'>
@@ -50,7 +96,13 @@ function CheckForm({ update }) {
           signature={ values.signature }
         />
       </div>
-      <Form as={Col} className='checkform__form'>
+      <Form
+        className="checkform__form"
+        ref={formRef}
+        noValidate
+        validated={validated}
+        onSubmit={handleSubmit}
+      >
         <Row className="mb-2">
           <Form.Group as={Col} controlId="gridRecipient" className="checkform__field">
             <FloatingLabel controlId="recipient" label="Recipient">
@@ -59,7 +111,11 @@ function CheckForm({ update }) {
                 name="recipient"
                 value={ values.recipient }
                 onChange={ onChange }
+                required
               />
+              <Form.Control.Feedback type="invalid">
+                Recipient cannot be empty
+              </Form.Control.Feedback>
             </FloatingLabel>
           </Form.Group>
 
@@ -70,7 +126,12 @@ function CheckForm({ update }) {
                 name="numberAmount"
                 value={ values.numberAmount }
                 onChange={ onChange }
+                isInvalid={ !!errors.numberAmount }
+                required
               />
+              <Form.Control.Feedback type="invalid">
+                { errors.numberAmount }
+              </Form.Control.Feedback>
             </FloatingLabel>
           </Form.Group>
         </Row>
@@ -82,7 +143,11 @@ function CheckForm({ update }) {
               name="writtenAmount"
               value={ values.writtenAmount }
               onChange={ onChange }
+              required
             />
+            <Form.Control.Feedback type="invalid">
+              Written amount cannot be empty
+            </Form.Control.Feedback>
           </FloatingLabel>
         </Row>
 
@@ -94,7 +159,11 @@ function CheckForm({ update }) {
                 name="memo"
                 value={ values.memo }
                 onChange={ onChange }
+                required
               />
+              <Form.Control.Feedback type="invalid">
+                Memo cannot be empty
+              </Form.Control.Feedback>
             </FloatingLabel>
           </Form.Group>
 
@@ -105,13 +174,17 @@ function CheckForm({ update }) {
                 name="signature"
                 value={ values.signature }
                 onChange={ onChange }
+                required
               />
+              <Form.Control.Feedback type="invalid">
+                Signature cannot be empty
+              </Form.Control.Feedback>
             </FloatingLabel>
           </Form.Group>
         </Row>
 
         <div className='checkform__button'>
-          <Button variant="outline-secondary" onClick={() => sendData()}>
+          <Button variant="outline-secondary" type="submit">
             Send Check
           </Button>
         </div>
