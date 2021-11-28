@@ -1,7 +1,8 @@
-import { Nav } from 'react-bootstrap';
+import { Image, Nav } from 'react-bootstrap';
 import { NavLink } from 'react-router-dom';
 
 import './Navigation.scss';
+import logo from './logo.png';
 
 function Navigation() {
   return (
@@ -11,12 +12,11 @@ function Navigation() {
       >
         <Nav.Item>
           <Nav.Link
-            className="navigation__link"
             as={NavLink}
             to="/"
             eventKey="Home"
           >
-            CheckFi
+            <Image src={ logo } className="navigation__image" />
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
