@@ -1,6 +1,8 @@
 import { Image, Nav } from 'react-bootstrap';
 import { NavLink } from 'react-router-dom';
 
+import MetamaskConnection from './MetamaskConnection';
+
 import './Navigation.scss';
 import logo from './logo.png';
 
@@ -10,6 +12,7 @@ function Navigation() {
       <Nav
         className={["container"]}
       >
+
         <Nav.Item>
           <Nav.Link
             as={NavLink}
@@ -19,6 +22,7 @@ function Navigation() {
             <Image src={ logo } className="navigation__image" />
           </Nav.Link>
         </Nav.Item>
+
         <Nav.Item>
           <Nav.Link
             className="navigation__link"
@@ -29,6 +33,7 @@ function Navigation() {
               Write Check
           </Nav.Link>
         </Nav.Item>
+
         <Nav.Item>
           <Nav.Link
             className="navigation__link"
@@ -39,6 +44,7 @@ function Navigation() {
             Redeem Check
           </Nav.Link>
         </Nav.Item>
+
         <Nav.Item>
           <Nav.Link
             className="navigation__link"
@@ -49,6 +55,11 @@ function Navigation() {
             View Checks
           </Nav.Link>
         </Nav.Item>
+
+        <Nav.Item>
+          <MetamaskConnection />
+        </Nav.Item>
+
       </Nav>
     </div>
   );

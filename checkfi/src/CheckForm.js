@@ -12,7 +12,7 @@ const initialState = {
   numberAmount: '',
   checkDate: (new Date()).toLocaleDateString(),
   signature: '',
-}
+};
 
 function reducer(prevState, { key, value }) {
   if (key === "clear") {
@@ -33,11 +33,11 @@ function CheckForm({ update }) {
   function handleReset() {
     formRef.current.reset();
     setValidated(false);
-  };
+  }
 
   function onChange(e) {
     setValues({key: e.target.name, value: e.target.value});
-  };
+  }
 
   function checkForErrors() {
     const { numberAmount } = values;
@@ -47,7 +47,7 @@ function CheckForm({ update }) {
       return errors;
     }
 
-    // check to make sure numerical amount is actually a number
+    // check to make sure numerical amount is a valid number
     const isNum = /^\d+(\.\d{1,2})?$/.test(numberAmount);
     if (!isNum) {
       errors.numberAmount = "Numerical amount must be an integer";
@@ -82,7 +82,7 @@ function CheckForm({ update }) {
       update({ show: true, status: "success", msg: "Success!"});
       setValues({key: "clear", value: "clear"});
     }
-  };
+  }
 
   return (
     <div className='checkform__main'>
