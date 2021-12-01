@@ -26,6 +26,9 @@
     "hardhat": "^2.6.8"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.3.3"
+    "@openzeppelin/contracts": "^4.3.3",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "level": "^7.0.1"
   }
 }
