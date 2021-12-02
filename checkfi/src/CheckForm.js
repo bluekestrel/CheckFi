@@ -1,6 +1,8 @@
 import React, { useReducer, useRef, useState } from 'react';
 import { Button, Col, FloatingLabel, Form, Row } from 'react-bootstrap';
 
+import axios from 'axios';
+
 import ReactChecks from './Check';
 
 import './CheckForm.scss';
@@ -79,6 +81,10 @@ function CheckForm({ update }) {
 
       console.log(values);
       // TODO: send ajax request with values from check
+      axios.post('http://localhost:3042/write', values).then((res) => {
+        console.log("POST sent to Bank backend");
+        console.log(res);
+      });
       update({ show: true, status: "success", msg: "Success!"});
       setValues({key: "clear", value: "clear"});
     }

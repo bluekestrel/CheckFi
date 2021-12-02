@@ -3,12 +3,14 @@ const level = require('level');
 const db = level('./db', { valueEncoding: 'json' });
 
 let CREATE_ACCOUNT_LOCK = false;
+const BALANCE_LOCK = [];
 
 // bank database is of the format:
 // {
 //   minterContractAddress: <ethereumAddress>,
 //   nextAccountNumber: <nextAccountNumber>,
 //   accountNumbers: [<accountNumber_1>, <accountNumber_2>, ... ],
+//   mintedCheckTotal: 0,
 //   <accountNumber_1>: {
 //     balance: <balance_1_integer>,
 //     ethereumAddress: <ethereumAddress_1_string>,
@@ -54,7 +56,22 @@ async function initializeKeyValuePair(key, initValue) {
   return { success: true };
 }
 
-async function initialize(minterContractAddress) {
+async function getMinterContractAddress() {
+  try {
+    const minterContractAddress = await db.get('minterContractAddress');
+    return { success: true, minterContractAddress };
+  }
+  catch {
+    return { success: false, reason: 'Unable to get minter contract address' };
+  }
+}
+
+async function initializeMinterContractAddress(address) {
+  const results = await initializeKeyValuePair('minterContractAddress', address);
+  return results;
+}
+
+async function initialize() {
   let results;
   results = await initializeKeyValuePair('nextAccountNumber', 1);
   if (results.success === false) {
@@ -64,7 +81,7 @@ async function initialize(minterContractAddress) {
   if (results.success === false) {
     return results;
   }
-  results = await initializeKeyValuePair('minterContractAddress', minterContractAddress);
+  results = await initializeKeyValuePair('mintedCheckTotal', 0);
   return results;
 }
 
@@ -92,6 +109,7 @@ async function createAccount(ethereumAddress, firstName, lastName, physicalAddre
 
   // create the account object to be stored
   const account = {
+    accountNumber,
     balance: 0,
     ethereumAddress,
     firstName,
@@ -135,6 +153,40 @@ async function createAccount(ethereumAddress, firstName, lastName, physicalAddre
   return { success: true, accountNumber: accountNumber };
 }
 
+async function getAllAccounts() {
+  try {
+    const { success, accountNumbers, reason } = await getAccountNumbers();
+    if (success === true) {
+      const promises = accountNumbers.map((accountNumber) => {
+        return getAccount(accountNumber)
+      });
+      const results = await Promise.all(promises);
+      const accounts = results.map((entry) => entry.account);
+      return { success, accounts };
+    }
+    return { success, reason };
+  }
+  catch {
+    return { success: false, reason: 'Unable to get all accounts' };
+  }
+}
+
+async function getNames() {
+  try {
+    const { success, accounts, reason } = await getAllAccounts();
+    if (success === true) {
+      const names = accounts.map((account) => {
+        return account.firstName + ' ' + account.lastName
+      });
+      return { success, names };
+    }
+    return { success, reason };
+  }
+  catch {
+    return { success: false, reason: 'Unable to get all names on accounts' };
+  }
+}
+
 async function getAccountNumbers() {
   try {
     return { success: true, accountNumbers: await db.get('accountNumbers') };
@@ -163,11 +215,33 @@ async function getBalance(accountNumber) {
   return { success, balance: account.balance };
 }
 
-async function withdraw(accountNumber, amount) {
-  // be protective about the amount
-  if (amount <= 0) {
-    return { success: false, reason: 'Withdrawal amount must be positive' };
+async function getAccountByName(name) {
+  const { success, accounts, reason } = await getAllAccounts();
+  if (success === false) {
+    return { success, reason };
   }
+  const account = accounts.filter((account) => account.firstName + ' ' + account.lastName === name);
+  if (account.length !== 1) {
+    return { success: false, reason: `Did not find one match for account name provided: ${name}` };
+  }
+  return { success: true, account: account[0] };
+};
+
+function getBalanceLock(num) {
+  if (BALANCE_LOCK.indexOf(num) === -1 && BALANCE_LOCK.push(num)) {
+    return true;
+  }
+  return false;
+}
+
+function releaseBalanceLock(num) {
+  if (BALANCE_LOCK.indexOf(num) !== -1 && BALANCE_LOCK.splice(BALANCE_LOCK.indexOf(num))) {
+    return true;
+  }
+  return false;
+}
+
+async function withdraw(accountNumber, amount) {
 
   // verify that the account exists
   const { success, account, reason } = await getAccount(accountNumber);
@@ -177,8 +251,21 @@ async function withdraw(accountNumber, amount) {
     return { success, reason };
   }
 
+  // is there a lock on this account already?
+  // if not, set the lock and proceed with the transfer
+  if (getBalanceLock(accountNumber) === false) {
+    return { success: false, reason: 'Account balance changes currently locked' };
+  }
+
+  // be protective about the amount
+  if (amount <= 0) {
+    releaseBalanceLock(accountNumber);
+    return { success: false, reason: 'Withdrawal amount must be positive' };
+  }
+
   // verify that the balance is sufficient for the withdrawal
   if (account.balance < amount) {
+    releaseBalanceLock(accountNumber);
     return { success: false, reason: 'Insufficient funds' };
   }
 
@@ -188,18 +275,16 @@ async function withdraw(accountNumber, amount) {
   // store the new account information
   try {
     await db.put(accountNumber, account);
+    releaseBalanceLock(accountNumber);
     return { success: true, balance: account.balance };
   }
   catch {
+    releaseBalanceLock(accountNumber);
     return { success: false, reason: 'Error withdrawing funds' };
   }
 }
 
 async function deposit(accountNumber, amount) {
-  // be protective about the amount
-  if (amount <= 0) {
-    return { success: false, reason: 'Deposit amount must be positive' };
-  }
 
   // verify that the account exists
   const { success, account, reason } = await getAccount(accountNumber);
@@ -209,22 +294,41 @@ async function deposit(accountNumber, amount) {
     return { success, reason };
   }
 
+  // is there a lock on this account already?
+  // if not, set the lock and proceed with the transfer
+  if (getBalanceLock(accountNumber) === false) {
+    return { success: false, reason: 'Account balance changes currently locked' };
+  }
+
+  // be protective about the amount
+  if (amount <= 0) {
+    releaseBalanceLock(accountNumber);
+    return { success: false, reason: 'Deposit amount must be positive' };
+  }
+
   // calculate the new balance
   account.balance += amount;
 
   // store the new balance
   try {
     await db.put(accountNumber, account);
+    releaseBalanceLock(accountNumber);
     return { success: true, balance: account.balance };
   }
   catch {
+    releaseBalanceLock(accountNumber);
     return { success: false, reason: 'Error depositing funds' };
   }
 }
 
 module.exports = {
+  getMinterContractAddress,
   initialize,
+  initializeMinterContractAddress,
   createAccount,
+  getAllAccounts,
+  getAccountByName,
+  getNames,
   getAccountNumbers,
   getAccount,
   getBalance,

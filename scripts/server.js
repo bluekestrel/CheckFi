@@ -18,19 +18,16 @@ async function deployContract() {
   // Deploy the contract
   const checkMinter = await hre.ethers.getContractFactory("CheckMinter");
   const contract = await checkMinter.deploy();
-
   await contract.deployed();
-
   return contract.address;
 }
 
-async function setUpAccounts() {
+async function setUpAccounts(accounts) {
 
   const { success, reason, accountNumbers } = await bank.getAccountNumbers();
 
   if ((success === true) && (accountNumbers.length === 0)) {
     // create an account for each signer
-    const accounts = await ethers.provider.listAccounts();
     let person;
     let results;
     for (let i=0; i<accounts.length; i++) {
@@ -56,19 +53,37 @@ async function setUpAccounts() {
         console.log('Failed to create account!');
         console.log(results.reason);
       }
-
     }
   }
 }
 
 async function main() {
 
-  const contractAddress = await deployContract();
-  console.log("Contract deployed to:", contractAddress);
+  const [bankSigner, ...accounts] = await ethers.provider.listAccounts();
 
   // if there is no database set up yet, populate the database with several values
-  await bank.initialize(contractAddress);
-  await setUpAccounts();
+  await bank.initialize();
+  await setUpAccounts(accounts);
+
+  // check for the contract address
+  let results;
+  let minterContractAddress;
+  results = await bank.getMinterContractAddress();
+  if (results.success === false) {
+    minterContractAddress = await deployContract();
+    console.log("Contract deployed to:", minterContractAddress);
+    results = await bank.initializeMinterContractAddress(minterContractAddress);
+    if (results.success === false) {
+      throw new Error('Unable to set minter contract address in database');
+    }
+  }
+  else {
+    minterContractAddress = results.minterContractAddress;
+    console.log("Contract found deployed to:", minterContractAddress);
+  }
+
+  const { abi } = await hre.artifacts.readArtifact("contracts/CheckMinter.sol:CheckMinter");
+  const checkMinterContract = new ethers.Contract(minterContractAddress, abi, ethers.provider);
 
   // set up the routes
   // get the balance of the account
@@ -80,6 +95,16 @@ async function main() {
     }
     else {
       res.send({ balance });
+    }
+  });
+
+  app.get('/minterContractAddress', async (req, res) => {
+    const { success, reason, minterContractAddress } = await bank.getMinterContractAddress();
+    if (success === false) {
+      res.send({ reason });
+    }
+    else {
+      res.send({ minterContractAddress });
     }
   });
 
@@ -103,6 +128,93 @@ async function main() {
     else {
       res.send({ account });
     }
+  });
+
+  app.get('/names', async (req, res) => {
+    const { success, reason, names } = await bank.getNames();
+    if (success === false) {
+      res.send({ reason });
+    }
+    else {
+      res.send({ names });
+    }
+  });
+
+  // writing a check
+  //   - request comes from React frontend
+  //   - account name is checked
+  //   - recipient name is NOT checked
+  //   - balance is checked
+  //   - amount is withdrawn from account balance
+  //   - check is minted on blockchain
+  //   - transaction hash is returned
+  app.post('/write', async (req, res) => {
+    console.log('request body:');
+    console.log(req.body);
+
+    const {
+      recipient,
+      numberAmount,
+      writtenAmount,
+      memo,
+      signature,
+      senderAddress,
+      imageBytes,
+    } = req.body;
+
+    let results;
+
+    // check writer account name - does it exist
+    results = await bank.getAccountByName(signature);
+    if (results.success === false) {
+      res.send({ reason: results.reason });
+      return;
+    }
+
+    const sender = results.account;
+    console.log('Sender: ', sender);
+
+    /*
+    // check recipient account name - does it exist
+    results = await bank.getAccountByName(recipient);
+    if (results.success === false) {
+      res.send({ reason: results.reason });
+    }
+
+    const recipient = results.account;
+    console.log('Recipient: ', recipient);
+    */
+
+    // validate the amount
+    const amount = parseInt(numberAmount, 10);
+    if (isNaN(amount)) {
+      res.send({ reason: 'Unable to parse amount specified' });
+      return;
+    }
+
+    // attempt withdrawal
+    results = await bank.withdraw(sender.accountNumber, amount);
+    if (results.success === false) {
+      res.send({ reason: results.reason });
+      return;
+    }
+
+    // mint check
+    // checkMinterContract.doThing(); 
+    const transaction = await checkMinterContract.connect(bankSigner).writeCheck(
+      sender.ethereumAddress,
+      recipient.ethereumAddress,
+      amount,
+      URI
+    );
+    console.log(transaction);
+    const checkReceipt = await transaction.wait();
+    console.log(checkReceipt);
+    const result = checkReceipt.event?.filter((x) => {
+      return x.event === "CheckWritten";
+    });
+    console.log(result);
+
   });
 
   // expects JSON in the format:
