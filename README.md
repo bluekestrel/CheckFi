@@ -10,9 +10,13 @@ Testing the code:
 npx hardhat test
 ```
 
-Running a local blockchain with the bank REST API:
+Running a local blockchain:
 ```shell
-ganache-cli
+npx hardhat node
+```
+
+In another terminal, start the bank REST API:
+```shell
 npx hardhat run --network localhost scripts/server.js
 ```
 

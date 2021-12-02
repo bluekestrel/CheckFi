@@ -2,6 +2,7 @@ const hre = require("hardhat");
 const ethers = hre.ethers;
 
 const bank = require('./bank');
+const people = require('./people');
 
 const express = require('express');
 const app = express();
@@ -23,10 +24,51 @@ async function deployContract() {
   return contract.address;
 }
 
+async function setUpAccounts() {
+
+  const { success, reason, accountNumbers } = await bank.getAccountNumbers();
+
+  if ((success === true) && (accountNumbers.length === 0)) {
+    // create an account for each signer
+    const accounts = await ethers.provider.listAccounts();
+    let person;
+    let results;
+    for (let i=0; i<accounts.length; i++) {
+      person = people.generatePerson();
+
+      // create the account
+      results = await bank.createAccount(
+        accounts[i],
+        person.firstName,
+        person.lastName,
+        person.physicalAddress
+      );
+
+      if (results.success === true) {
+        console.log('Created account: ', results.accountNumber);
+        console.log('-------------------');
+        console.log('First Name: ', person.firstName);
+        console.log('Last Name: ', person.lastName);
+        console.log('Physical Address: ', person.physicalAddress);
+        console.log('Ethereum Address: ', accounts[i], '\n');
+      }
+      else {
+        console.log('Failed to create account!');
+        console.log(results.reason);
+      }
+
+    }
+  }
+}
+
 async function main() {
 
   const contractAddress = await deployContract();
   console.log("Contract deployed to:", contractAddress);
+
+  // if there is no database set up yet, populate the database with several values
+  await bank.initialize(contractAddress);
+  await setUpAccounts();
 
   // set up the routes
   // get the balance of the account
@@ -53,6 +95,7 @@ async function main() {
   });
 
   app.get('/accounts/:accountNumber', async (req, res) => {
+    const { accountNumber } = req.params;
     const { success, account, reason } = await bank.getAccount(accountNumber);
     if (success === false) {
       res.send({ reason });

@@ -2,61 +2,89 @@
 const level = require('level');
 const db = level('./db', { valueEncoding: 'json' });
 
-// check to see if the database exists
-// initialize it if it doesn't exist
-db.get('nextAccountNumber', function (err, value) {
-  if (err) {
-    db.put('nextAccountNumber', 1, function (err) {
-      if (err) {
-        console.log(`Error initializing database next account number`, err);
-      }
-      console.log('Database inititalized');
-    });
-  }
-  else {
-    console.log(`Existing database found, nextAccountNumber is ${value}`);
-  }
-});
+let CREATE_ACCOUNT_LOCK = false;
 
 // bank database is of the format:
 // {
+//   minterContractAddress: <ethereumAddress>,
 //   nextAccountNumber: <nextAccountNumber>,
 //   accountNumbers: [<accountNumber_1>, <accountNumber_2>, ... ],
 //   <accountNumber_1>: {
-//     balance: <balance_1>,
-//     ethereumAddress: <ethereumAddress_1>,
-//     firstName: <firstName_1>,
-//     lastName: <lastName_1>,
+//     balance: <balance_1_integer>,
+//     ethereumAddress: <ethereumAddress_1_string>,
+//     firstName: <firstName_1_string>,
+//     lastName: <lastName_1_string>,
 //     physicalAddress: {
-//       streetNumber: <streetNumber_1>,
-//       streetName: <streetName_1>,
-//       city: <city_1>,
-//       state: <state_1>,
-//       zipCode: <zipCode_1>,
+//       streetNumber: <streetNumber_1_string>,
+//       streetName: <streetName_1_string>,
+//       city: <city_1_string>,
+//       state: <state_1_string>,
+//       zipCode: <zipCode_1_string>,
 //     }
 //   },
 //   <accountNumber_2>: {
-//     balance: <balance_2>,
-//     ethereumAddress: <ethereumAddress_2>,
-//     firstName: <firstName_2>,
-//     lastName: <lastName_2>,
+//     balance: <balance_2_integer>,
+//     ethereumAddress: <ethereumAddress_2_string>,
+//     firstName: <firstName_2_string>,
+//     lastName: <lastName_2_string>,
 //     physicalAddress: {
-//       streetNumber: <streetNumber_2>,
-//       streetName: <streetName_2>,
-//       city: <city_2>,
-//       state: <state_2>,
-//       zipCode: <zipCode_2>,
+//       streetNumber: <streetNumber_2_string>,
+//       streetName: <streetName_2_string>,
+//       city: <city_2_string>,
+//       state: <state_2_string>,
+//       zipCode: <zipCode_2_string>,
 //     }
 //   },
 //   ...
 // }
 
-// convenience method for populating the database
-// TODO: Validate ethereum address?
-async function createAccount(ethereumAddress, firstName, lastName, physicalAddress) {
-  // get the next account number for this new account
+async function initializeKeyValuePair(key, initValue) {
+  let value;
   try {
-    const accountNumber = await db.get('nextAccountNumber');
+    value = await db.get(key);
+  }
+  catch {
+    try {
+      await db.put(key, initValue);
+    }
+    catch {
+      return { success: false, reason: `Unable to initialize ${key} to ${initValue}`};
+    }
+  }
+  return { success: true };
+}
+
+async function initialize(minterContractAddress) {
+  let results;
+  results = await initializeKeyValuePair('nextAccountNumber', 1);
+  if (results.success === false) {
+    return results;
+  }
+  results = await initializeKeyValuePair('accountNumbers', []);
+  if (results.success === false) {
+    return results;
+  }
+  results = await initializeKeyValuePair('minterContractAddress', minterContractAddress);
+  return results;
+}
+
+// convenience method for populating the database
+// must lock to prevent multiple accounts from receiving the same account number
+async function createAccount(ethereumAddress, firstName, lastName, physicalAddress) {
+
+  // ensure that only one account is created at a time
+  // if the lock is not set, acquire it
+  if ((CREATE_ACCOUNT_LOCK === false) && (CREATE_ACCOUNT_LOCK = true)) {
+  }
+  else {
+    // otherwise, return
+    return { success: false, reason: 'Create account locked for account creation' }
+  }
+
+  // get the next account number for this new account
+  let accountNumber;
+  try {
+    accountNumber = await db.get('nextAccountNumber');
   }
   catch {
     return { success: false, reason: 'Unable to get next account number' };
@@ -102,6 +130,8 @@ async function createAccount(ethereumAddress, firstName, lastName, physicalAddre
     return { success: false, reason: 'Unable to add new account to Array of account numbers' };
   }
 
+  // unlock account creation
+  CREATE_ACCOUNT_LOCK = false;
   return { success: true, accountNumber: accountNumber };
 }
 
@@ -193,6 +223,7 @@ async function deposit(accountNumber, amount) {
 }
 
 module.exports = {
+  initialize,
   createAccount,
   getAccountNumbers,
   getAccount,
