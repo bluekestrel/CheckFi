@@ -87,7 +87,7 @@ async function initialize() {
 
 // convenience method for populating the database
 // must lock to prevent multiple accounts from receiving the same account number
-async function createAccount(ethereumAddress, firstName, lastName, physicalAddress) {
+async function createAccount(ethereumAddress, firstName, lastName, physicalAddress, balance) {
 
   // ensure that only one account is created at a time
   // if the lock is not set, acquire it
@@ -110,7 +110,7 @@ async function createAccount(ethereumAddress, firstName, lastName, physicalAddre
   // create the account object to be stored
   const account = {
     accountNumber,
-    balance: 0,
+    balance,
     ethereumAddress,
     firstName,
     lastName,

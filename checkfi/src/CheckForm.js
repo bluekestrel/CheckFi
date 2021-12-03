@@ -79,14 +79,25 @@ function CheckForm({ update }) {
       handleReset();
       setErrors({});
 
-      console.log(values);
       // TODO: send ajax request with values from check
       axios.post('http://localhost:3042/write', values).then((res) => {
-        console.log("POST sent to Bank backend");
-        console.log(res);
+        const { data } = res;
+        if (res.status === 200) {
+          update({
+            show: true,
+            status: "success",
+            msg: `Success! Transaction hash: ${data.transactionHash}`
+          });
+        }
+        else {
+          update({
+            show: true,
+            status: "failure",
+            msg: `Oops, something went wrong! ${JSON.stringify(res)}`
+          });
+        }
+        setValues({key: "clear", value: "clear"});
       });
-      update({ show: true, status: "success", msg: "Success!"});
-      setValues({key: "clear", value: "clear"});
     }
   }
 

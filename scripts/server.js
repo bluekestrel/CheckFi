@@ -33,12 +33,13 @@ async function setUpAccounts(accounts) {
     for (let i=0; i<accounts.length; i++) {
       person = people.generatePerson();
 
-      // create the account
+      // create and fund the account
       results = await bank.createAccount(
         accounts[i],
         person.firstName,
         person.lastName,
-        person.physicalAddress
+        person.physicalAddress,
+        1000
       );
 
       if (results.success === true) {
@@ -59,7 +60,9 @@ async function setUpAccounts(accounts) {
 
 async function main() {
 
-  const [bankSigner, ...accounts] = await ethers.provider.listAccounts();
+  const [bankAddress, ...accounts] = await ethers.provider.listAccounts();
+
+  const bankSigner = await ethers.getSigner(0);
 
   // if there is no database set up yet, populate the database with several values
   await bank.initialize();
@@ -86,25 +89,29 @@ async function main() {
   const checkMinterContract = new ethers.Contract(minterContractAddress, abi, ethers.provider);
 
   // set up the routes
+  app.get('/', (req, res) => {
+    res.status(200).send('Welcome to the bank');
+  });
+
   // get the balance of the account
   app.get('/balances/:accountNumber', async (req, res) => {
     const { accountNumber } = req.params;
     const { success, reason, balance } = await bank.getBalance(accountNumber);
     if (success === false) {
-      res.send({ reason });
+      res.status(500).send({ reason });
     }
     else {
-      res.send({ balance });
+      res.status(200).send({ balance });
     }
   });
 
   app.get('/minterContractAddress', async (req, res) => {
     const { success, reason, minterContractAddress } = await bank.getMinterContractAddress();
     if (success === false) {
-      res.send({ reason });
+      res.status(500).send({ reason });
     }
     else {
-      res.send({ minterContractAddress });
+      res.status(200).send({ minterContractAddress });
     }
   });
 
@@ -112,10 +119,10 @@ async function main() {
   app.get('/accounts', async (req, res) => {
     const { success, reason, accountNumbers } = await bank.getAccountNumbers();
     if (success === false) {
-      res.send({ reason });
+      res.status(500).send({ reason });
     }
     else {
-      res.send({ accountNumbers });
+      res.status(200).send({ accountNumbers });
     }
   });
 
@@ -123,20 +130,20 @@ async function main() {
     const { accountNumber } = req.params;
     const { success, account, reason } = await bank.getAccount(accountNumber);
     if (success === false) {
-      res.send({ reason });
+      res.status(500).send({ reason });
     }
     else {
-      res.send({ account });
+      res.status(200).send({ account });
     }
   });
 
   app.get('/names', async (req, res) => {
     const { success, reason, names } = await bank.getNames();
     if (success === false) {
-      res.send({ reason });
+      res.status(500).send({ reason });
     }
     else {
-      res.send({ names });
+      res.status(200).send({ names });
     }
   });
 
@@ -158,8 +165,7 @@ async function main() {
       writtenAmount,
       memo,
       signature,
-      senderAddress,
-      imageBytes,
+      // imageBytes,
     } = req.body;
 
     let results;
@@ -167,53 +173,59 @@ async function main() {
     // check writer account name - does it exist
     results = await bank.getAccountByName(signature);
     if (results.success === false) {
-      res.send({ reason: results.reason });
+      res.status(500).send({ reason: results.reason });
       return;
     }
 
     const sender = results.account;
     console.log('Sender: ', sender);
 
-    /*
     // check recipient account name - does it exist
     results = await bank.getAccountByName(recipient);
     if (results.success === false) {
-      res.send({ reason: results.reason });
+      res.status(500).send({ reason: results.reason });
     }
 
-    const recipient = results.account;
-    console.log('Recipient: ', recipient);
-    */
+    const receiver = results.account;
+    console.log('Recipient: ', receiver);
 
     // validate the amount
+    console.log('validating the amount of the check');
     const amount = parseInt(numberAmount, 10);
+    console.log('amount: ', amount);
     if (isNaN(amount)) {
-      res.send({ reason: 'Unable to parse amount specified' });
+      res.status(500).send({ reason: 'Unable to parse amount specified' });
       return;
     }
 
     // attempt withdrawal
+    console.log('attempting withdrawal');
     results = await bank.withdraw(sender.accountNumber, amount);
+    console.log('results: ', results);
     if (results.success === false) {
-      res.send({ reason: results.reason });
+      res.status(500).send({ reason: results.reason });
       return;
     }
+    console.log('withdrawal complete');
 
     // mint check
     // checkMinterContract.doThing(); 
+    const URI = 'fakeIPFSURI';
     const transaction = await checkMinterContract.connect(bankSigner).writeCheck(
       sender.ethereumAddress,
-      recipient.ethereumAddress,
+      receiver.ethereumAddress,
       amount,
       URI
     );
-    console.log(transaction);
+    console.log("Transaction: ", transaction);
     const checkReceipt = await transaction.wait();
-    console.log(checkReceipt);
-    const result = checkReceipt.event?.filter((x) => {
+    console.log("Check Receipt: ", checkReceipt);
+    const result = checkReceipt.events?.filter((x) => {
       return x.event === "CheckWritten";
     });
-    console.log(result);
+    console.log('Event result: ', result);
+
+    res.status(200).send({ transactionHash: checkReceipt.transactionHash });
 
   });
 
