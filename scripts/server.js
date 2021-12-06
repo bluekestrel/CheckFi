@@ -140,7 +140,29 @@ async function main() {
 
   app.get('/checks/:accountNumber', async (req, res) => {
     const { accountNumber } = req.params;
-    const { success, checksWritten, reason } = await bank.getChecksWritten(accountNumber);
+    const { success, account, reason } = await bank.getAccount(accountNumber);
+    if (success === false) {
+      res.status(500).send({ reason });
+    }
+    else {
+      res.status(200).send({ checksWritten: account.checksWritten });
+    }
+  });
+
+  app.post('/checks', async (req, res) => {
+    const { 
+      messageString,
+      messageSignature,
+    } = req.body;
+
+    // verify the signature of the message string against the address of the account
+    const signingAddress = ethers.utils.verifyMessage(messageString, messageSignature);
+
+    const {
+      success,
+      checksWritten,
+      reason
+    } = await bank.getChecksFromEthereumAddress(signingAddress.toLowerCase());
     if (success === false) {
       res.status(500).send({ reason });
     }

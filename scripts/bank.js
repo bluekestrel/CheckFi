@@ -218,6 +218,29 @@ async function getChecksWritten(accountNumber) {
   return { success: true, checksWritten: account.checksWritten };
 }
 
+async function getChecksFromEthereumAddress(ethereumAddress) {
+  const { success, account, reason } = await getAccountByEthereumAddress(ethereumAddress);
+  if (success === false) {
+    return { success, reason };
+  }
+  return { success: true, checksWritten: account.checksWritten };
+}
+
+async function getAccountByEthereumAddress(ethereumAddress) {
+  const { success, accounts, reason } = await getAllAccounts();
+  if (success === false) {
+    return { success, reason };
+  }
+  const account = accounts.filter((account) => account.ethereumAddress === ethereumAddress);
+  if (account.length !== 1) {
+    return {
+      success: false,
+      reason: `Did not find one match for ethereum address provided: ${name}`
+    };
+  }
+  return { success: true, account: account[0] };
+};
+
 async function getBalance(accountNumber) {
   const { success, account, reason } = await getAccount(accountNumber);
 
@@ -381,6 +404,8 @@ module.exports = {
   getAccountNumbers,
   getAccount,
   getChecksWritten,
+  getChecksFromEthereumAddress,
+  getAccountByEthereumAddress,
   getBalance,
   withdraw,
   addCheckNumber,
