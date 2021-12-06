@@ -3,7 +3,7 @@ const level = require('level');
 const db = level('./db', { valueEncoding: 'json' });
 
 let CREATE_ACCOUNT_LOCK = false;
-const BALANCE_LOCK = [];
+const ACCOUNT_LOCKS = [];
 
 // bank database is of the format:
 // {
@@ -22,7 +22,8 @@ const BALANCE_LOCK = [];
 //       city: <city_1_string>,
 //       state: <state_1_string>,
 //       zipCode: <zipCode_1_string>,
-//     }
+//     },
+//     checksWritten: [<checkNumber_1>, <checkNumber_2>, ... ],
 //   },
 //   <accountNumber_2>: {
 //     balance: <balance_2_integer>,
@@ -35,7 +36,8 @@ const BALANCE_LOCK = [];
 //       city: <city_2_string>,
 //       state: <state_2_string>,
 //       zipCode: <zipCode_2_string>,
-//     }
+//     },
+//     checksWritten: [<checkNumber_1>, <checkNumber_2>, ... ],
 //   },
 //   ...
 // }
@@ -114,7 +116,8 @@ async function createAccount(ethereumAddress, firstName, lastName, physicalAddre
     ethereumAddress,
     firstName,
     lastName,
-    physicalAddress
+    physicalAddress,
+    checksWritten: []
   }
 
   // store the new account object
@@ -175,10 +178,11 @@ async function getNames() {
   try {
     const { success, accounts, reason } = await getAllAccounts();
     if (success === true) {
-      const names = accounts.map((account) => {
-        return account.firstName + ' ' + account.lastName
+      const accountNames = {};
+      accounts.forEach((account) => {
+        accountNames[account.accountNumber] = account.firstName + ' ' + account.lastName;
       });
-      return { success, names };
+      return { success, names: accountNames };
     }
     return { success, reason };
   }
@@ -205,13 +209,21 @@ async function getAccount(accountNumber) {
   }
 }
 
+async function getChecksWritten(accountNumber) {
+  const { success, account, reason } = await getAccount(accountNumber);
+
+  if (success === false) {
+    return { success, reason };
+  }
+  return { success: true, checksWritten: account.checksWritten };
+}
+
 async function getBalance(accountNumber) {
   const { success, account, reason } = await getAccount(accountNumber);
 
   if (success === false) {
     return { success, reason };
   }
-
   return { success, balance: account.balance };
 }
 
@@ -227,15 +239,15 @@ async function getAccountByName(name) {
   return { success: true, account: account[0] };
 };
 
-function getBalanceLock(num) {
-  if (BALANCE_LOCK.indexOf(num) === -1 && BALANCE_LOCK.push(num)) {
+function getAccountLock(num) {
+  if (ACCOUNT_LOCKS.indexOf(num) === -1 && ACCOUNT_LOCKS.push(num)) {
     return true;
   }
   return false;
 }
 
-function releaseBalanceLock(num) {
-  if (BALANCE_LOCK.indexOf(num) !== -1 && BALANCE_LOCK.splice(BALANCE_LOCK.indexOf(num))) {
+function releaseAccountLock(num) {
+  if (ACCOUNT_LOCKS.indexOf(num) !== -1 && ACCOUNT_LOCKS.splice(ACCOUNT_LOCKS.indexOf(num))) {
     return true;
   }
   return false;
@@ -243,29 +255,30 @@ function releaseBalanceLock(num) {
 
 async function withdraw(accountNumber, amount) {
 
+  // is there a lock on this account already?
+  // if not, set the lock and proceed with the transfer
+  if (getAccountLock(accountNumber) === false) {
+    return { success: false, reason: 'Account balance changes currently locked' };
+  }
+
   // verify that the account exists
   const { success, account, reason } = await getAccount(accountNumber);
 
   // no account number, no withdrawal
   if (success === false) {
+    releaseAccountLock(accountNumber);
     return { success, reason };
-  }
-
-  // is there a lock on this account already?
-  // if not, set the lock and proceed with the transfer
-  if (getBalanceLock(accountNumber) === false) {
-    return { success: false, reason: 'Account balance changes currently locked' };
   }
 
   // be protective about the amount
   if (amount <= 0) {
-    releaseBalanceLock(accountNumber);
+    releaseAccountLock(accountNumber);
     return { success: false, reason: 'Withdrawal amount must be positive' };
   }
 
   // verify that the balance is sufficient for the withdrawal
   if (account.balance < amount) {
-    releaseBalanceLock(accountNumber);
+    releaseAccountLock(accountNumber);
     return { success: false, reason: 'Insufficient funds' };
   }
 
@@ -275,34 +288,70 @@ async function withdraw(accountNumber, amount) {
   // store the new account information
   try {
     await db.put(accountNumber, account);
-    releaseBalanceLock(accountNumber);
+    releaseAccountLock(accountNumber);
     return { success: true, balance: account.balance };
   }
   catch {
-    releaseBalanceLock(accountNumber);
+    releaseAccountLock(accountNumber);
     return { success: false, reason: 'Error withdrawing funds' };
   }
 }
 
+async function addCheckNumber(accountNumber, checkNumber) {
+  
+  if (getAccountLock(accountNumber) === false) {
+    return { success: false, reason: 'Account changes currently locked' };
+  }
+
+  // verify that the account exists
+  const { success, account, reason } = await getAccount(accountNumber);
+
+  if (success === false) {
+    releaseAccountLock(accountNumber);
+    return { success, reason };
+  }
+
+  // verify that the check number does not already exist in the array
+  if (account.checksWritten.indexOf(checkNumber) !== -1) {
+    releaseAccountLock(accountNumber);
+    return { success: false, reason: 'Check number already present in account' };
+  }
+
+  // add the check number to the array
+  account.checksWritten.push(checkNumber); 
+
+  // update the account
+  try {
+    await db.put(accountNumber, account);
+    releaseAccountLock(accountNumber);
+    return { success: true, checksWritten: account.checksWritten };
+  }
+  catch {
+    releaseAccountLock(accountNumber);
+    return { success: false, reason: 'Error adding check number to account record' };
+  }
+}
+
 async function deposit(accountNumber, amount) {
+
+  // is there a lock on this account already?
+  // if not, set the lock and proceed with the transfer
+  if (getAccountLock(accountNumber) === false) {
+    return { success: false, reason: 'Account balance changes currently locked' };
+  }
 
   // verify that the account exists
   const { success, account, reason } = await getAccount(accountNumber);
 
   // no account number, no deposit
   if (success === false) {
+    releaseAccountLock(accountNumber);
     return { success, reason };
-  }
-
-  // is there a lock on this account already?
-  // if not, set the lock and proceed with the transfer
-  if (getBalanceLock(accountNumber) === false) {
-    return { success: false, reason: 'Account balance changes currently locked' };
   }
 
   // be protective about the amount
   if (amount <= 0) {
-    releaseBalanceLock(accountNumber);
+    releaseAccountLock(accountNumber);
     return { success: false, reason: 'Deposit amount must be positive' };
   }
 
@@ -312,11 +361,11 @@ async function deposit(accountNumber, amount) {
   // store the new balance
   try {
     await db.put(accountNumber, account);
-    releaseBalanceLock(accountNumber);
+    releaseAccountLock(accountNumber);
     return { success: true, balance: account.balance };
   }
   catch {
-    releaseBalanceLock(accountNumber);
+    releaseAccountLock(accountNumber);
     return { success: false, reason: 'Error depositing funds' };
   }
 }
@@ -331,7 +380,9 @@ module.exports = {
   getNames,
   getAccountNumbers,
   getAccount,
+  getChecksWritten,
   getBalance,
   withdraw,
+  addCheckNumber,
   deposit,
 };

@@ -2,6 +2,7 @@ import React, { useReducer, useRef, useState } from 'react';
 import { Button, Col, FloatingLabel, Form, Row } from 'react-bootstrap';
 
 import axios from 'axios';
+import { ethers } from 'ethers';
 
 import ReactChecks from './Check';
 
@@ -79,25 +80,41 @@ function CheckForm({ update }) {
       handleReset();
       setErrors({});
 
-      // TODO: send ajax request with values from check
-      axios.post('http://localhost:3042/write', values).then((res) => {
-        const { data } = res;
-        if (res.status === 200) {
-          update({
-            show: true,
-            status: "success",
-            msg: `Success! Transaction hash: ${data.transactionHash}`
-          });
-        }
-        else {
-          update({
-            show: true,
-            status: "failure",
-            msg: `Oops, something went wrong! ${JSON.stringify(res)}`
-          });
-        }
-        setValues({key: "clear", value: "clear"});
+      // convert values to JSON string
+      const messageString = JSON.stringify(values);
+
+      // calculate hash of string
+      // const messageHash = ethers.utils.id(messageString);
+
+      // ethers.js approach
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+
+      signer.signMessage(messageString).then((rawSignature) => {
+        const postJson = {
+          messageString,
+          messageSignature: rawSignature
+        };
+        axios.post('http://localhost:3042/write', postJson).then((res) => {
+          const { data } = res;
+          if (res.status === 200) {
+            update({
+              show: true,
+              status: "success",
+              msg: `Success! Tx: ${data.transactionHash}, Check Number: ${ data.checkNumber}`
+            });
+          }
+          else {
+            update({
+              show: true,
+              status: "failure",
+              msg: `Oops, something went wrong! ${data.reason}`
+            });
+          }
+          setValues({key: "clear", value: "clear"});
+        });
       });
+
     }
   }
 

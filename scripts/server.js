@@ -1,5 +1,6 @@
 const hre = require("hardhat");
 const ethers = hre.ethers;
+const BigNumber = require('bignumber.js');
 
 const bank = require('./bank');
 const people = require('./people');
@@ -137,6 +138,17 @@ async function main() {
     }
   });
 
+  app.get('/checks/:accountNumber', async (req, res) => {
+    const { accountNumber } = req.params;
+    const { success, checksWritten, reason } = await bank.getChecksWritten(accountNumber);
+    if (success === false) {
+      res.status(500).send({ reason });
+    }
+    else {
+      res.status(200).send({ checksWritten });
+    }
+  });
+
   app.get('/names', async (req, res) => {
     const { success, reason, names } = await bank.getNames();
     if (success === false) {
@@ -156,8 +168,12 @@ async function main() {
   //   - check is minted on blockchain
   //   - transaction hash is returned
   app.post('/write', async (req, res) => {
-    console.log('request body:');
-    console.log(req.body);
+    const {
+      messageString,
+      messageSignature,
+    } = req.body;
+
+    const message = JSON.parse(messageString);
 
     const {
       recipient,
@@ -165,8 +181,7 @@ async function main() {
       writtenAmount,
       memo,
       signature,
-      // imageBytes,
-    } = req.body;
+    } = message;
 
     let results;
 
@@ -180,14 +195,29 @@ async function main() {
     const sender = results.account;
     console.log('Sender: ', sender);
 
+    // verify the signature of the message string against the address of the account
+    const signingAddress = ethers.utils.verifyMessage(messageString, messageSignature);
+
+    if (sender.ethereumAddress !== signingAddress) {
+      res.status(500).send({ reason: 'Address used for signature does not match account' });
+      return;
+    }
+
     // check recipient account name - does it exist
     results = await bank.getAccountByName(recipient);
     if (results.success === false) {
       res.status(500).send({ reason: results.reason });
+      return;
     }
 
     const receiver = results.account;
     console.log('Recipient: ', receiver);
+
+    // verify that the sender and recipient are not the same
+    if (sender.accountNumber === receiver.accountNumber) {
+      res.status(500).send({ reason: 'Sender and recipient may not be the same account' });
+      return;
+    }
 
     // validate the amount
     console.log('validating the amount of the check');
@@ -209,7 +239,6 @@ async function main() {
     console.log('withdrawal complete');
 
     // mint check
-    // checkMinterContract.doThing(); 
     const URI = 'fakeIPFSURI';
     const transaction = await checkMinterContract.connect(bankSigner).writeCheck(
       sender.ethereumAddress,
@@ -217,15 +246,38 @@ async function main() {
       amount,
       URI
     );
-    console.log("Transaction: ", transaction);
     const checkReceipt = await transaction.wait();
-    console.log("Check Receipt: ", checkReceipt);
-    const result = checkReceipt.events?.filter((x) => {
+
+    // expect only one check written event
+    const resultCheckWritten = checkReceipt.events?.filter((x) => {
       return x.event === "CheckWritten";
     });
-    console.log('Event result: ', result);
+    console.log('CheckWritten event result: ', resultCheckWritten);
 
-    res.status(200).send({ transactionHash: checkReceipt.transactionHash });
+    // expect only one transfer event
+    const resultTransfer = checkReceipt.events?.filter((x) => {
+      return x.event === "Transfer";
+    });
+    console.log('Transfer event result: ', resultTransfer);
+
+    // extract the tokenId (check number)
+    const { args: { tokenId: checkNumber } } = resultTransfer[0];
+
+    // need to save the tokenId for the check that was written in the bank backend
+    const checkNumberString = checkNumber.toString();
+    results = await bank.addCheckNumber(sender.accountNumber, checkNumberString);
+    if (results.success === false) {
+      res.status(500).send({
+        reason: results.reason,
+        transactionHash: checkReceipt.transactionHash
+      });
+      return;
+    }
+
+    res.status(200).send({ 
+      transactionHash: checkReceipt.transactionHash,
+      checkNumber: checkNumberString,
+    });
 
   });
 
