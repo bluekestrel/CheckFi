@@ -6,6 +6,8 @@ import { ethers } from 'ethers';
 
 import ReactChecks from './Check';
 
+import { verify } from './MetamaskHelperFunctions';
+
 import './CheckForm.scss';
 
 const initialState = {
@@ -59,7 +61,7 @@ function CheckForm({ update }) {
     return errors;
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     const form = event.currentTarget;
 
     // prevent the page from reloading regardless of whether form is valid or invalid
@@ -82,9 +84,6 @@ function CheckForm({ update }) {
 
       // convert values to JSON string
       const messageString = JSON.stringify(values);
-
-      // calculate hash of string
-      // const messageHash = ethers.utils.id(messageString);
 
       // ethers.js approach
       const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -114,6 +113,30 @@ function CheckForm({ update }) {
           setValues({key: "clear", value: "clear"});
         });
       });
+
+      /*
+      const signature = await verify("write", values);
+      console.log(signature);
+
+      axios.post('http://localhost:3042/write', values).then((res) => {
+        const { data } = res;
+        if (res.status === 200) {
+          update({
+            show: true,
+            status: "success",
+            msg: `Success! Transaction hash: ${data.transactionHash}`
+          });
+        }
+        else {
+          update({
+            show: true,
+            status: "failure",
+            msg: `Oops, something went wrong! ${JSON.stringify(res)}`
+          });
+        }
+        setValues({key: "clear", value: "clear"});
+      });
+      */
 
     }
   }
