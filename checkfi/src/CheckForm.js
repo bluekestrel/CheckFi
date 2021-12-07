@@ -2,10 +2,9 @@ import React, { useReducer, useRef, useState } from 'react';
 import { Button, Col, FloatingLabel, Form, Row } from 'react-bootstrap';
 
 import axios from 'axios';
+import { ethers } from 'ethers';
 
 import ReactChecks from './Check';
-
-import { verify } from './MetamaskHelperFunctions';
 
 import './CheckForm.scss';
 
@@ -60,7 +59,7 @@ function CheckForm({ update }) {
     return errors;
   }
 
-  async function handleSubmit(event) {
+  function handleSubmit(event) {
     const form = event.currentTarget;
 
     // prevent the page from reloading regardless of whether form is valid or invalid
@@ -81,27 +80,41 @@ function CheckForm({ update }) {
       handleReset();
       setErrors({});
 
-      const signature = await verify("write", values);
-      console.log(signature);
+      // convert values to JSON string
+      const messageString = JSON.stringify(values);
 
-      axios.post('http://localhost:3042/write', values).then((res) => {
-        const { data } = res;
-        if (res.status === 200) {
-          update({
-            show: true,
-            status: "success",
-            msg: `Success! Transaction hash: ${data.transactionHash}`
-          });
-        }
-        else {
-          update({
-            show: true,
-            status: "failure",
-            msg: `Oops, something went wrong! ${JSON.stringify(res)}`
-          });
-        }
-        setValues({key: "clear", value: "clear"});
+      // calculate hash of string
+      // const messageHash = ethers.utils.id(messageString);
+
+      // ethers.js approach
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+
+      signer.signMessage(messageString).then((rawSignature) => {
+        const postJson = {
+          messageString,
+          messageSignature: rawSignature
+        };
+        axios.post('http://localhost:3042/write', postJson).then((res) => {
+          const { data } = res;
+          if (res.status === 200) {
+            update({
+              show: true,
+              status: "success",
+              msg: `Success! Tx: ${data.transactionHash}, Check Number: ${ data.checkNumber}`
+            });
+          }
+          else {
+            update({
+              show: true,
+              status: "failure",
+              msg: `Oops, something went wrong! ${data.reason}`
+            });
+          }
+          setValues({key: "clear", value: "clear"});
+        });
       });
+
     }
   }
 

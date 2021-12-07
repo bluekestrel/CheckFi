@@ -37,7 +37,7 @@ function WriteCheck() {
 
       <div className="writecheck__notification">
         <ToastContainer position="top-end" className="p-3">
-          <Toast onClose={onToastClose} show={state.show} delay={3000} autohide>
+          <Toast onClose={onToastClose} show={state.show} delay={8000} autohide>
             <Toast.Header>
               <strong className="me-auto">CheckFi</strong>
               <small>Just Now</small>
