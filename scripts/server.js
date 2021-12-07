@@ -164,6 +164,7 @@ async function main() {
     const {
       success,
       checksWritten,
+      checksReceived,
       reason
     } = await bank.getChecksFromEthereumAddress(signingAddress);
     if (success === false) {
