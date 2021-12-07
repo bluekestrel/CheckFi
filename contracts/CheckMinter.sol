@@ -16,9 +16,9 @@ contract CheckMinter is ERC721URIStorage {
         bool spendable;
     }
 
-    address bank;
-    Counters.Counter private _tokenIds;
-    mapping(uint256 => Check) private _checks;
+    address public bank;
+    Counters.Counter public _tokenIds;
+    mapping(uint256 => Check) public _checks;
 
     modifier onlyBank {
         require(msg.sender == bank, "Address is not the bank address");
@@ -30,31 +30,33 @@ contract CheckMinter is ERC721URIStorage {
     }
 
     event CheckWritten(address writer, address recipient, uint256 amount);
-    function writeCheck(address writer, address recipient, uint256 amount, string memory tokenURI) external onlyBank {
+    function writeCheck(address writer, address recipient, uint256 amount, string memory tokenURI) external onlyBank returns(uint) {
         // The bank mints a new NFT each time a user wants to create a check to send to another person
         _tokenIds.increment();
 
         uint256 newItemId = _tokenIds.current();
-        _safeMint(recipient, newItemId);
+        _safeMint(writer, newItemId);
         _setTokenURI(newItemId, tokenURI);
 
         // make a new Check object and then add it to the checks mapping
         Check memory newCheck = Check(writer, recipient, amount, true);
         _checks[newItemId] = newCheck;
-
         emit CheckWritten(writer, recipient, amount);
+        return newItemId;
     }
 
-    function getCheck(uint256 tokenId) external onlyBank view returns (address,address,uint256,bool) {
-      // copy the data into memory
-      Check memory c = _checks[tokenId];
-      return (c.checkWriter, c.recipient, c.amount, c.spendable);
+    function getCheck(uint tokenId) public view returns (Check memory) {
+        require(msg.sender == bank || 
+        msg.sender == _checks[tokenId].checkWriter ||
+        msg.sender == _checks[tokenId].recipient, "Unauthorized");
+        return _checks[tokenId];
     }
 
-    function isCheckSpendable(uint256 tokenId) public view returns (bool) {
-        return _checks[tokenId].spendable;
+    function endorseNewRecipient(uint tokenId, address newRecipient) public {
+        require(msg.sender == _checks[tokenId].recipient, "Only a recipient authorized to endorse a check");
+        _checks[tokenId].recipient = newRecipient;
     }
-
+    
     event CheckCashed(address writer, address recipient, uint256 amount);
     function cashCheck(uint256 tokenId, address recipient, uint256 amount) external onlyBank {
         // While a recipient and amount has been passed, no money is explicitly being transfered
@@ -62,11 +64,10 @@ contract CheckMinter is ERC721URIStorage {
         // same one that was listed when the check was 'written' and the amount is passed to make
         // sure the amount being 'requested' is the same that was requested when the check was
         // 'written'
-        require(_checks[tokenId].recipient == recipient, "Requested recipient is not original recipeint on check");
-        require(isCheckSpendable(tokenId) == true, "Check has already been spent");
+        require(_checks[tokenId].recipient == recipient, "Requested recipient is not original recipient on check");
+        require(getCheck(tokenId).spendable == true, "Check has already been spent");
         require(amount == _checks[tokenId].amount, "Check amount does not match");
         _checks[tokenId].spendable = false;
-
         emit CheckCashed(_checks[tokenId].checkWriter, recipient, amount);
     }
 }
