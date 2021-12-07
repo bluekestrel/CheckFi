@@ -7,6 +7,7 @@ import { ethers } from 'ethers';
 import './RedeemCheck.scss';
 
 const initialState = {
+  checkId: '',
   show: false,
   status: '', // can be either 'success' or 'failure' to indicate toast styling
   msg: '', // optional status message
@@ -130,7 +131,7 @@ function RedeemCheck() {
               <Form.Control
                 placeholder="Check ID"
                 name="checkId"
-                value={ values }
+                value={ values.checkId }
                 onChange={ onChange }
                 required
               />

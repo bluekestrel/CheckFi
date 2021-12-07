@@ -261,13 +261,16 @@ async function main() {
   //   - check is minted on blockchain
   //   - transaction hash is returned
   app.post('/write', async (req, res) => {
-    console.log(req.body);
     const {
       messageString,
       messageSignature,
     } = req.body;
 
+    console.log('messageString: ', messageString);
+    console.log('messageSignature: ', messageSignature);
+
     const message = JSON.parse(messageString);
+    console.log('message: ', message);
 
     const {
       recipient,
