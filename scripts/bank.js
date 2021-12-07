@@ -23,7 +23,26 @@ const ACCOUNT_LOCKS = [];
 //       state: <state_1_string>,
 //       zipCode: <zipCode_1_string>,
 //     },
-//     checksWritten: [<checkNumber_1>, <checkNumber_2>, ... ],
+//     checksWritten: {
+//       <checkNumber_1>: {
+//         toAccount: <accountNumber_1>,
+//         amount: <amount_1>,
+//       },
+//       <checkNumber_2>: {
+//         toAccount: <accountNumber_2>,
+//         amount: <amount_2>,
+//       }
+//     },
+//     checksReceived: {
+//       <checkNumber_1>: {
+//         fromAccount: <accountNumber_1>,
+//         amount: <amount_1>,
+//       },
+//       <checkNumber_2>: {
+//         fromAccount: <accountNumber_2>,
+//         amount: <amount_2>,
+//       },
+//     }
 //   },
 //   <accountNumber_2>: {
 //     balance: <balance_2_integer>,
@@ -37,7 +56,26 @@ const ACCOUNT_LOCKS = [];
 //       state: <state_2_string>,
 //       zipCode: <zipCode_2_string>,
 //     },
-//     checksWritten: [<checkNumber_1>, <checkNumber_2>, ... ],
+//     checksWritten: {
+//       <checkNumber_1>: {
+//         toAccount: <accountNumber_1>,
+//         amount: <amount_1>,
+//       },
+//       <checkNumber_2>: {
+//         toAccount: <accountNumber_2>,
+//         amount: <amount_2>,
+//       }
+//     },
+//     checksReceived: {
+//       <checkNumber_1>: {
+//         fromAccount: <accountNumber_1>,
+//         amount: <amount_1>,
+//       },
+//       <checkNumber_2>: {
+//         fromAccount: <accountNumber_2>,
+//         amount: <amount_2>,
+//       },
+//     }
 //   },
 //   ...
 // }
@@ -117,7 +155,8 @@ async function createAccount(ethereumAddress, firstName, lastName, physicalAddre
     firstName,
     lastName,
     physicalAddress,
-    checksWritten: []
+    checksWritten: {},
+    checksReceived: {},
   }
 
   // store the new account object
@@ -209,13 +248,17 @@ async function getAccount(accountNumber) {
   }
 }
 
-async function getChecksWritten(accountNumber) {
+async function getChecks(accountNumber) {
   const { success, account, reason } = await getAccount(accountNumber);
 
   if (success === false) {
     return { success, reason };
   }
-  return { success: true, checksWritten: account.checksWritten };
+  return {
+    success: true,
+    checksWritten: account.checksWritten,
+    checksReceived: account.checksReceived,
+  };
 }
 
 async function getChecksFromEthereumAddress(ethereumAddress) {
@@ -223,7 +266,11 @@ async function getChecksFromEthereumAddress(ethereumAddress) {
   if (success === false) {
     return { success, reason };
   }
-  return { success: true, checksWritten: account.checksWritten };
+  return {
+    success: true,
+    checksWritten: account.checksWritten,
+    checksReceived: account.checksReceived,
+  };
 }
 
 async function getAccountByEthereumAddress(ethereumAddress) {
@@ -320,10 +367,19 @@ async function withdraw(accountNumber, amount) {
   }
 }
 
-async function addCheckNumber(accountNumber, checkNumber) {
+async function addCheck(accountNumber, recipientAccountNumber, amount, checkNumber) {
   
+  console.log(accountNumber);
+  console.log(recipientAccountNumber);
+  console.log(amount);
+  console.log(checkNumber);
+
+  // get locks for both accounts
   if (getAccountLock(accountNumber) === false) {
     return { success: false, reason: 'Account changes currently locked' };
+  }
+  else if (accountNumber !== recipientAccountNumber && getAccountLock(recipientAccountNumber) === false) {
+    return { success: false, reason: 'Account changes currently locked (recipient)' };
   }
 
   // verify that the account exists
@@ -331,27 +387,66 @@ async function addCheckNumber(accountNumber, checkNumber) {
 
   if (success === false) {
     releaseAccountLock(accountNumber);
+    releaseAccountLock(recipientAccountNumber);
     return { success, reason };
   }
 
-  // verify that the check number does not already exist in the array
-  if (account.checksWritten.indexOf(checkNumber) !== -1) {
-    releaseAccountLock(accountNumber);
-    return { success: false, reason: 'Check number already present in account' };
+  // verify that the recipient account exists
+  let success_2;
+  let recipientAccount;
+  let reason_2;
+  if (accountNumber !== recipientAccountNumber) {
+    ({ 
+      success: success_2,
+      account: recipientAccount,
+      reason: reason_2
+    } = await getAccount(recipientAccountNumber));
+    if (success_2 === false) {
+      releaseAccountLock(accountNumber);
+      releaseAccountLock(recipientAccountNumber);
+      return { success: success_2, reason: reason_2 };
+    }
   }
 
-  // add the check number to the array
-  account.checksWritten.push(checkNumber); 
+  // verify that the check number does not already exist in the array
+  if (Object.keys(account.checksWritten).indexOf(checkNumber) !== -1) {
+    releaseAccountLock(accountNumber);
+    releaseAccountLock(recipientAccountNumber);
+    return { success: false, reason: 'Check number already present in sender account' };
+  }
+
+  // add the check number to the checksWritten object
+  account.checksWritten[checkNumber] = {
+    toAccount: recipientAccountNumber,
+    amount,
+  };
+
+  // verify that the check number does not already exist in the array
+  console.log(recipientAccount);
+  if (Object.keys(recipientAccount.checksReceived).indexOf(checkNumber) !== -1) {
+    releaseAccountLock(accountNumber);
+    releaseAccountLock(recipientAccountNumber);
+    return { success: false, reason: 'Check number already present in recipient account' };
+  }
+
+  // add the check number to the checksWritten object
+  recipientAccount.checksReceived[checkNumber] = {
+    fromAccount: accountNumber,
+    amount,
+  };
 
   // update the account
   try {
     await db.put(accountNumber, account);
+    await db.put(recipientAccountNumber, recipientAccount);
     releaseAccountLock(accountNumber);
-    return { success: true, checksWritten: account.checksWritten };
+    releaseAccountLock(recipientAccountNumber);
+    return { success: true };
   }
   catch {
     releaseAccountLock(accountNumber);
-    return { success: false, reason: 'Error adding check number to account record' };
+    releaseAccountLock(recipientAccountNumber);
+    return { success: false, reason: 'Error adding check number to account records' };
   }
 }
 
@@ -403,11 +498,11 @@ module.exports = {
   getNames,
   getAccountNumbers,
   getAccount,
-  getChecksWritten,
+  getChecks,
   getChecksFromEthereumAddress,
   getAccountByEthereumAddress,
   getBalance,
   withdraw,
-  addCheckNumber,
+  addCheck,
   deposit,
 };

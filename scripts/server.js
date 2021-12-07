@@ -145,7 +145,10 @@ async function main() {
       res.status(500).send({ reason });
     }
     else {
-      res.status(200).send({ checksWritten: account.checksWritten });
+      res.status(200).send({ 
+        checksWritten: account.checksWritten,
+        checksReceived: account.checksReceived,
+      });
     }
   });
 
@@ -162,13 +165,56 @@ async function main() {
       success,
       checksWritten,
       reason
-    } = await bank.getChecksFromEthereumAddress(signingAddress.toLowerCase());
+    } = await bank.getChecksFromEthereumAddress(signingAddress);
     if (success === false) {
       res.status(500).send({ reason });
     }
     else {
-      res.status(200).send({ checksWritten });
+      res.status(200).send({ checksWritten, checksReceived });
     }
+  });
+
+  app.post('/redeem', async (req, res) => {
+    const { 
+      messageString,
+      messageSignature,
+    } = req.body;
+
+    // verify the signature of the message string against the address of the account
+    const signingAddress = ethers.utils.verifyMessage(messageString, messageSignature);
+
+    const message = JSON.parse(messageString);
+    const { checkNumber } = message;
+
+    // get check information from the contract
+    const {
+      senderEthereumAddress,
+      receiverEthereumAddress,
+      amount,
+      spendable,
+    } = await checkMinterContract.connect(bankSigner).getCheck(checkNumber);
+
+    // call cashCheck method from contract
+    const transaction = await checkMinterContract.connect(bankSigner).cashCheck(
+      checkNumber,
+      signingAddress,
+      amount,
+    );
+    const checkReceipt = await transaction.wait();
+
+    // expect only one check cashed event
+    const resultCheckCashed = checkReceipt.events?.filter((x) => {
+      return x.event === "CheckCashed";
+    });
+    console.log('CheckCashed event result: ', resultCheckCashed);
+
+    // TODO
+    // need to update the balance in the bank
+    //
+    // TODO
+    // need to check for failure and send success = false
+
+    res.status(200).send({ success: true, transactionHash: checkReceipt.transactionHash });
   });
 
   app.get('/names', async (req, res) => {
@@ -262,6 +308,11 @@ async function main() {
 
     // mint check
     const URI = 'fakeIPFSURI';
+    console.log('Performing blockchain transaction with the following arguments:');
+    console.log(`\tsender ethereum address: ${sender.ethereumAddress}`);
+    console.log(`\treceiver ethereum address: ${receiver.ethereumAddress}`);
+    console.log(`\tamount: ${amount}`);
+    console.log(`\tURI: ${URI}`);
     const transaction = await checkMinterContract.connect(bankSigner).writeCheck(
       sender.ethereumAddress,
       receiver.ethereumAddress,
@@ -287,7 +338,13 @@ async function main() {
 
     // need to save the tokenId for the check that was written in the bank backend
     const checkNumberString = checkNumber.toString();
-    results = await bank.addCheckNumber(sender.accountNumber, checkNumberString);
+    results = await bank.addCheck(
+      sender.accountNumber,
+      receiver.accountNumber,
+      amount,
+      checkNumberString
+    );
+
     if (results.success === false) {
       res.status(500).send({
         reason: results.reason,
