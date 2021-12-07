@@ -182,39 +182,64 @@ async function main() {
 
     // verify the signature of the message string against the address of the account
     const signingAddress = ethers.utils.verifyMessage(messageString, messageSignature);
-
-    const message = JSON.parse(messageString);
-    const { checkNumber } = message;
+    const checkNumber = JSON.parse(messageString);
+    console.log('redeem requested for checkNumber: ', checkNumber);
 
     // get check information from the contract
-    const {
-      senderEthereumAddress,
-      receiverEthereumAddress,
-      amount,
-      spendable,
-    } = await checkMinterContract.connect(bankSigner).getCheck(checkNumber);
+    const check = await checkMinterContract.connect(bankSigner).getCheck(checkNumber);
+    const [ checkWriter, recipient, amount, spendable ] = check;
+
+    if (signingAddress !== recipient) {
+      res.status(500).send({ reason: 'Cannot cash check that does not belong to you' });
+      return;
+    }
+
+    if (spendable === false) {
+      res.status(500).send({ reason: 'Check has already been redeemed' });
+      return;
+    }
 
     // call cashCheck method from contract
+    console.log('calling the cashCheck method from the contract');
     const transaction = await checkMinterContract.connect(bankSigner).cashCheck(
       checkNumber,
-      signingAddress,
+      recipient,
       amount,
     );
-    const checkReceipt = await transaction.wait();
+    console.log('getting check receipt');
+    const cashCheckReceipt = await transaction.wait();
+    console.log(cashCheckReceipt);
 
     // expect only one check cashed event
-    const resultCheckCashed = checkReceipt.events?.filter((x) => {
+    const resultCheckCashed = cashCheckReceipt.events?.filter((x) => {
       return x.event === "CheckCashed";
     });
     console.log('CheckCashed event result: ', resultCheckCashed);
 
-    // TODO
-    // need to update the balance in the bank
-    //
-    // TODO
-    // need to check for failure and send success = false
+    // attempt deposit
+    console.log('getting bank account number corresponding to: ', recipient);
+    let results = await bank.getAccountByEthereumAddress(recipient);
+    console.log('results: ', results);
+    if (results.success === false) {
+      res.status(500).send({
+        reason: results.reason,
+      });
+    }
+    const { account: { accountNumber } } = results;
+    console.log('bank account number: ', accountNumber);
 
-    res.status(200).send({ success: true, transactionHash: checkReceipt.transactionHash });
+    console.log('attempting deposit');
+    results = await bank.deposit(accountNumber, parseInt(amount.toString(), 10));
+    console.log('results: ', results);
+    if (results.success === false) {
+      res.status(500).send({ reason: results.reason });
+      return;
+    }
+    console.log('deposit complete');
+    res.status(200).send({
+      transactionHash: cashCheckReceipt.transactionHash,
+      balance: results.balance,
+    });
   });
 
   app.get('/names', async (req, res) => {
@@ -236,6 +261,7 @@ async function main() {
   //   - check is minted on blockchain
   //   - transaction hash is returned
   app.post('/write', async (req, res) => {
+    console.log(req.body);
     const {
       messageString,
       messageSignature,

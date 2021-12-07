@@ -78,14 +78,14 @@ function RedeemCheck() {
           messageString,
           messageSignature: rawSignature
         };
-        /*
-        axios.post('http://localhost:3042/write', postJson).then((res) => {
+
+        axios.post('http://localhost:3042/redeem', postJson).then((res) => {
           const { data } = res;
           if (res.status === 200) {
             update({
               show: true,
               status: "success",
-              msg: `Success! Tx: ${data.transactionHash}, Check Number: ${ data.checkNumber}`
+              msg: `Success! Tx: ${data.transactionHash}, New Balance: ${ data.balance }`
             });
           }
           else {
@@ -97,7 +97,6 @@ function RedeemCheck() {
           }
           setValues({key: "clear", value: "clear"});
         });
-        */
       });
     }
   }

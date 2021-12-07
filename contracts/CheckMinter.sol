@@ -45,7 +45,7 @@ contract CheckMinter is ERC721URIStorage {
         emit CheckWritten(writer, recipient, amount);
     }
 
-    function getCheck(uint256 tokenId) external onlyBank returns (address,address,uint256,bool) {
+    function getCheck(uint256 tokenId) external onlyBank view returns (address,address,uint256,bool) {
       // copy the data into memory
       Check memory c = _checks[tokenId];
       return (c.checkWriter, c.recipient, c.amount, c.spendable);
