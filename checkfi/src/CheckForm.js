@@ -6,8 +6,6 @@ import { ethers } from 'ethers';
 
 import ReactChecks from './Check';
 
-import { verify } from './MetamaskHelperFunctions';
-
 import './CheckForm.scss';
 
 const initialState = {
@@ -61,7 +59,7 @@ function CheckForm({ update }) {
     return errors;
   }
 
-  async function handleSubmit(event) {
+  function handleSubmit(event) {
     const form = event.currentTarget;
 
     // prevent the page from reloading regardless of whether form is valid or invalid
@@ -112,6 +110,7 @@ function CheckForm({ update }) {
           }
           setValues({key: "clear", value: "clear"});
         });
+
       });
 
       /*
@@ -137,7 +136,6 @@ function CheckForm({ update }) {
         setValues({key: "clear", value: "clear"});
       });
       */
-
     }
   }
 
