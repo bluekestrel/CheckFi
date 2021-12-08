@@ -86,7 +86,7 @@ function RedeemCheck() {
             update({
               show: true,
               status: "success",
-              msg: `Success! Tx: ${data.transactionHash}, New Balance: ${ data.balance }`
+              msg: `Success! Tx: ${data.transactionHash}, New Balance: ${data.balance}`
             });
           }
           else {

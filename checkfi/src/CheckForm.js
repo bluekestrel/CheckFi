@@ -3,6 +3,7 @@ import { Button, Col, FloatingLabel, Form, Row } from 'react-bootstrap';
 
 import axios from 'axios';
 import { ethers } from 'ethers';
+import html2canvas from 'html2canvas';
 
 import ReactChecks from './Check';
 
@@ -32,6 +33,7 @@ function CheckForm({ update }) {
   const [validated, setValidated] = useState(false);
   const [errors, setErrors] = useState({});
   const formRef = useRef(null);
+  const checkRef = useRef();
 
   function handleReset() {
     formRef.current.reset();
@@ -59,7 +61,7 @@ function CheckForm({ update }) {
     return errors;
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     const form = event.currentTarget;
 
     // prevent the page from reloading regardless of whether form is valid or invalid
@@ -80,6 +82,25 @@ function CheckForm({ update }) {
       handleReset();
       setErrors({});
 
+      const canvas = await html2canvas(checkRef.current);
+
+      // wrapper to make async usage of toBlob cleaner
+      // ref: https://github.com/jbccollins/async-canvas-to-blob/blob/master/index.js
+      function getBlob(myCanvas) {
+        return new Promise(function(resolve) {
+          myCanvas.toBlob(resolve);
+        });
+      }
+
+      const blob = await getBlob(canvas);
+      const arrayBuffer = await blob.arrayBuffer();
+      // encoding arrayBuffer as base64 String
+      // ref: https://stackoverflow.com/questions/9267899/arraybuffer-to-base64-encoded-string
+      const imageBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(arrayBuffer)));
+
+      // add to values
+      values.imageBase64 = imageBase64;
+
       // convert values to JSON string
       const messageString = JSON.stringify(values);
 
@@ -87,61 +108,35 @@ function CheckForm({ update }) {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
 
-      signer.signMessage(messageString).then((rawSignature) => {
-        const postJson = {
-          messageString,
-          messageSignature: rawSignature
-        };
-        axios.post('http://localhost:3042/write', postJson).then((res) => {
-          const { data } = res;
-          if (res.status === 200) {
-            update({
-              show: true,
-              status: "success",
-              msg: `Success! Tx: ${data.transactionHash}, Check Number: ${ data.checkNumber}`
-            });
-          }
-          else {
-            update({
-              show: true,
-              status: "failure",
-              msg: `Oops, something went wrong! ${data.reason}`
-            });
-          }
-          setValues({key: "clear", value: "clear"});
+      const rawSignature = await signer.signMessage(messageString);
+      const postJson = {
+        messageString,
+        messageSignature: rawSignature,
+      };
+
+      const res = await axios.post('http://localhost:3042/write', postJson);
+      const { data } = res;
+      if (res.status === 200) {
+        update({
+          show: true,
+          status: "success",
+          msg: `Success! Tx: ${data.transactionHash}, Check Number: ${data.checkNumber}`
         });
-
-      });
-
-      /*
-      const signature = await verify("write", values);
-      console.log(signature);
-
-      axios.post('http://localhost:3042/write', values).then((res) => {
-        const { data } = res;
-        if (res.status === 200) {
-          update({
-            show: true,
-            status: "success",
-            msg: `Success! Transaction hash: ${data.transactionHash}`
-          });
-        }
-        else {
-          update({
-            show: true,
-            status: "failure",
-            msg: `Oops, something went wrong! ${JSON.stringify(res)}`
-          });
-        }
-        setValues({key: "clear", value: "clear"});
-      });
-      */
+      }
+      else {
+        update({
+          show: true,
+          status: "failure",
+          msg: `Oops, something went wrong! ${data.reason}`
+        });
+      }
+      setValues({key: "clear", value: "clear"});
     }
   }
 
   return (
     <div className='checkform__main'>
-      <div className='checkform__image'>
+      <div ref={checkRef} className='checkform__image'>
         <ReactChecks
           memo={ values.memo }
           numberAmount={ values.numberAmount }

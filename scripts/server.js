@@ -208,7 +208,6 @@ async function main() {
     );
     console.log('getting check receipt');
     const cashCheckReceipt = await transaction.wait();
-    console.log(cashCheckReceipt);
 
     // expect only one check cashed event
     const resultCheckCashed = cashCheckReceipt.events?.filter((x) => {
@@ -270,7 +269,6 @@ async function main() {
     console.log('messageSignature: ', messageSignature);
 
     const message = JSON.parse(messageString);
-    console.log('message: ', message);
 
     const {
       recipient,

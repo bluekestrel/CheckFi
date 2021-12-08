@@ -368,11 +368,6 @@ async function withdraw(accountNumber, amount) {
 }
 
 async function addCheck(accountNumber, recipientAccountNumber, amount, checkNumber) {
-  
-  console.log(accountNumber);
-  console.log(recipientAccountNumber);
-  console.log(amount);
-  console.log(checkNumber);
 
   // get locks for both accounts
   if (getAccountLock(accountNumber) === false) {
@@ -422,7 +417,6 @@ async function addCheck(accountNumber, recipientAccountNumber, amount, checkNumb
   };
 
   // verify that the check number does not already exist in the array
-  console.log(recipientAccount);
   if (Object.keys(recipientAccount.checksReceived).indexOf(checkNumber) !== -1) {
     releaseAccountLock(accountNumber);
     releaseAccountLock(recipientAccountNumber);

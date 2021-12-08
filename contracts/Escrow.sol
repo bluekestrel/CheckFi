@@ -164,14 +164,6 @@ contract EscrowContract is ERC721Holder {
             bool success = transferChecksFromEscrow(escrowId, escrowArray[escrowId].beneficiary);
             require(success, "transfer failed");
         }
-        if (approvedAmount < amountInEscrow(escrowId)) {
-            bool success = transferChecksFromEscrow(escrowId, checkMinter.bank());
-            require(success, "transfer failed");
-            uint checkBeneficiary = checkMinter.writeCheck(address(this), escrowArray[escrowId].beneficiary, approvedAmount, "");
-            checkMinter.safeTransferFrom(address(this), escrowArray[escrowId].beneficiary, checkBeneficiary);
-            uint checkDepositor = checkMinter.writeCheck(address(this), escrowArray[escrowId].depositor, amountInEscrow(escrowId) - approvedAmount, "");
-            checkMinter.safeTransferFrom(address(this), escrowArray[escrowId].depositor, checkDepositor);
-        }
         escrowArray[escrowId].status = EscrowStatus.Executed;
         emit Executed(escrowId, approvedAmount);
 	}

@@ -16,7 +16,7 @@ contract CheckMinter is ERC721URIStorage {
         bool spendable;
     }
 
-    address public bank;
+    address bank;
     Counters.Counter public _tokenIds;
     mapping(uint256 => Check) public _checks;
 
