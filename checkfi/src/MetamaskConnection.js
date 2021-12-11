@@ -29,6 +29,10 @@ function MetamaskConnection() {
     if (!onboarding.current) {
       onboarding.current = new MetaMaskOnboarding();
     }
+
+    if (MetaMaskOnboarding.isMetaMaskInstalled()) {
+      window.ethereum.on('accountsChanged', handleNewAccounts);
+    }
   }, []);
 
   useEffect(() => {
@@ -72,7 +76,6 @@ function MetamaskConnection() {
               .request({ method: 'eth_requestAccounts'})
               .then((newAccounts) => {
                 setAccounts(newAccounts);
-                window.ethereum.on('accountsChanged', handleNewAccounts);
               });
           }
         });
